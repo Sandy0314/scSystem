@@ -1,1 +1,1 @@
-# scSystem
+source activate ntusc

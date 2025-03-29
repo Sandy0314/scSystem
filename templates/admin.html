@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- 引入 Axios -->
+    <link rel="stylesheet" href="/static/css/admin.css">
+
+</head>
+
+
+<body>
+    {% raw %}
+    <!-- Header -->
+    <div class="content-container">
+        <header>
+            <nav>
+                <ul>
+                    <li><a href="/admin">會議記錄</a></li>
+                    <li><a href="/contact">規章</a></li>
+                    <li><a href="/">登出</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <div id="app">
+            <button type="button" class="new_btn" data-bs-toggle="modal" data-bs-target="#exampleModal">新增紀錄</button>
+            <!-- Modal -->
+            <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel"
+                aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">
+                                <div class="form-group">
+                                    <label for="record_title" class="input_text">會議標題 :</label>
+                                    <input id="record_title" type="text" class="form-control" placeholder="會議標題"
+                                        aria-label="會議標題" aria-describedby="basic-addon1">
+                                </div>
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="record_session" class="input_text">屆數 :</label>
+                                <input id="record_session" type="text" class="form-control" placeholder="屆數"
+                                    aria-label="屆數" aria-describedby="basic-addon1" v-model="latest_session">
+                            </div>
+                            <div class="form-group">
+                                <label for="record_date" class="input_text">會議日期 :</label>
+                                <input id="record_date" type="datetime-local" class="form-control" aria-label="會議日期"
+                                    aria-describedby="basic-addon1">
+                            </div>
+                            <div class="form-group">
+                                <label for="record_place" class="input_text">會議地點 :</label>
+                                <input id="record_place" type="text" class="form-control" placeholder="會議地點"
+                                    aria-label="會議地點" aria-describedby="basic-addon1">
+                            </div>
+                            <div class="form-group">
+                                <label for="contact_person" class="input_text">會議聯絡人 :</label>
+                                <input id="contact_person" type="text" class="form-control" placeholder="會議聯絡人"
+                                    aria-label="會議聯絡人" aria-describedby="basic-addon1">
+                            </div>
+                            <div class="form-group">
+                                <label for="shorthand_link" class="input_text">速記連結 :</label>
+                                <input id="shorthand_link" type="text" class="form-control" placeholder="速記連結"
+                                    aria-label="速記連結" aria-describedby="basic-addon1">
+                            </div>
+                            <div class="form-group">
+                                <label for="present_list" class="input_text">出席名單 :</label>
+                                <input id="present_list" type="text" class="form-control" placeholder="出席名單"
+                                    aria-label="出席名單" aria-describedby="basic-addon1">
+                            </div>
+                            <div class="form-group">
+                                <label for="attendance_list" class="input_text">列席名單 :</label>
+                                <input id="attendance_list" type="text" class="form-control" placeholder="列席名單"
+                                    aria-label="列席名單" aria-describedby="basic-addon1">
+                            </div>
+                            <div class="input_text">議程</div>
+                            <div class="agenda-item">
+                                <div class="normal_text">一、宣布開會</div>
+                                <button type="button" class="add_button" @click="add_detail(1)">新增細項</button>
+                                <div id="schedule1"></div>
+                            </div>
+
+                            <div class="agenda-item">
+                                <div class="normal_text">二、確認議程</div>
+                                <button type="button" class="add_button" @click="add_detail(2)">新增細項</button>
+                                <div id="schedule2"></div>
+                            </div>
+
+                            <div class="agenda-item">
+                                <div class="normal_text">三、主席報告</div>
+                                <button type="button" class="add_button" @click="add_detail(3)">新增細項</button>
+                                <div id="schedule3"></div>
+                            </div>
+
+                            <div class="agenda-item">
+                                <div class="normal_text">四、報告事項</div>
+                                <button type="button" class="add_button" @click="add_detail(4)">新增細項</button>
+                                <div id="schedule4"></div>
+                            </div>
+                            <!-- 質詢事項、人事同意事項
+                            討論事項
+                            臨時動議
+                            自由發言
+                            散會 -->
+
+                            <input id="schedule" type="text" class="form-control" placeholder="議程" aria-label="議程"
+                                aria-describedby="basic-addon1">
+                            <textarea id="record_content" class="form-control" placeholder="內容"
+                                id="floatingTextarea"></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" @click="saveChange()">Save
+                                changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-for="(items, key) in scsession" :key="key" class="section">
+                <h1>{{ key }}</h1>
+                <div v-for="item in items" :key="item.id">
+                    <button class="item_btn">{{ item.title }}</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>&copy; 2025 Your Company. All rights reserved.</p>
+        </footer>
+    </div>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                latest_session: "",
+                scsession: [],
+                record: [],
+                message: 'Please log in',
+                username: '',
+                password: '',
+                errorMessage: '',
+                modalData: {},      // 模態框顯示的資料
+                schedule: { "宣布開會": [], "確認議程": [], "主席報告": [], "報告事項": [], "討論事項": [], "臨時動議": [], "自由發言": [], "散會": [] },
+            },
+            async created() {
+                // 在组件创建时获取后端数据
+                console.log('Vue instance created.');  // Debug log
+                await this.fetchBackendData();
+
+            },
+            methods: {
+                // 获取后端数据的方法
+                async fetchBackendData() {
+                    try {
+                        const response = await axios.get('/admin/data'); // 假设你的后端 API 路径是 '/api/data'
+                        if (response.data) { // Debug log
+                            this.scsession = response.data[0]
+                            this.latest_session = Object.keys(this.scsession)[0];
+                            // console.log('Data fetched:', this.scsession, 'latest:', this.latest_session);
+                        }
+                    } catch (error) {
+                        console.error("Error fetching data:", error);
+                    }
+                },
+                closeModal() {
+                    var myModal = bootstrap.Modal.getInstance(document.getElementById('exampleModal'));
+                    myModal.hide();
+                },
+                async saveChange() {
+                    var title = document.getElementById("record_title").value;
+                    var content = document.getElementById("record_content").value;
+                    var session = document.getElementById("record_session").value;
+                    try {
+                        if (session in this.scsession) {
+                            const response = axios.post('/newRecord', {
+                                session: session,
+                                title: title,
+                                content: content
+                            });
+                            this.scsession[session].push({
+                                title: title,
+                                content: content
+                            });
+                        } else {
+                            const response = await axios.post('/newRecord', {
+                                session: session,
+                                title: title,
+                                content: content
+                            });
+                            this.scsession = response.data[0]
+                            this.latest_session = Object.keys(this.scsession)[0];
+                        }
+                        console.log('Data fetched:', this.scsession);
+                        this.closeModal();
+                        window.location.reload();
+                    } catch (error) {
+                        console.log(error)
+                    }
+                },
+                add_detail(idx) {
+                    console.log(idx, Object.keys(this.schedule)[idx]);
+                    const input = document.createElement("input");
+                    input.type = "text";
+                    input.className = "form-control";
+                    input.placeholder = "請輸入內容";
+                    var str = "schedule" + (idx.toString());
+                    document.getElementById(str).appendChild(input);
+
+                }
+            },
+            mounted() {
+
+            }
+        });
+    </script>
+    {% endraw %}
+
+</body>
+
+</html>

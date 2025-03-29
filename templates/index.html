@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- 引入 Axios -->
+    <!-- 引入外部CSS文件 -->
+    <link rel="stylesheet" href="/static/css/index.css">
+</head>
+
+<body>
+    <div id="app">
+        <div class="login-container">
+            <h1>{{ message }}</h1>
+            <form @submit.prevent="onLogin">
+                <input type="text" id="username" name="username" class="input-field" placeholder="Username" required>
+                <input type="password" id="password" name="password" class="input-field" placeholder="Password"
+                    required>
+                <button type="submit" class="login-btn">Login</button>
+            </form>
+            <p class="error-message" v-if="errorMessage">{{ errorMessage }}</p>
+        </div>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                message: 'Please log in',
+                username: '',
+                password: '',
+                errorMessage: ''
+            },
+            methods: {
+                async onLogin() {
+                    try {
+                        console.log('onLogin')
+                        this.username = document.getElementById("username").value;
+                        this.password = document.getElementById("password").value;
+
+                        const response = await axios.post('/login', {
+                            username: this.username,
+                            password: this.password
+                        });
+
+                        if (response.data.success) {
+                            console.log('success')
+                            sessionStorage.setItem("loggedIn", "true");
+                            window.location.href = "/admin";  // 登录成功，跳转到 admin 页面
+
+                        } else {
+                            console.log('Invalid credentials')
+                            this.errorMessage = "Invalid credentials";
+                        }
+                    } catch (error) {
+                        this.errorMessage = "Login failed";
+                    }
+                },
+                onLogout() {
+                    console.log("Logging out...");
+                    sessionStorage.removeItem("loggedIn");  // 移除登录状态
+
+                    // 使用 sendBeacon 确保请求在页面关闭前完成
+                    navigator.sendBeacon("/logout");
+                },
+                detectPageUnload() {
+                    window.addEventListener("beforeunload", () => {
+                        if (sessionStorage.getItem("loggedIn")) {
+                            console.log("Logging out due to page unload...");
+                            this.onLogout();  // 自動登出
+                        }
+                    });
+                }
+
+            },
+            mounted() {
+                this.detectPageUnload();  // 當 Vue 組件掛載時，監聽離開事件
+            }
+
+        });
+    </script>
+</body>
+
+</html>
