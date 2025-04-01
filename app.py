@@ -168,13 +168,13 @@ def newRecord():
     # print(data)
     if data["session"] not in record[0]:
         record[0][data["session"]] = []
-    tmp = {
-        "title": data["title"],
-        "description": data["content"],
-    }
-    record[0][data["session"]].append(tmp)
+    # tmp = {
+    #     "title": data["title"],
+    #     "description": data["content"],
+    # }
+    record[0][data["session"]].append(data)
     flipped_record = dict(reversed(record[0].items()))
-    # print(flipped_record)
+    print(flipped_record)
     return json.dumps([flipped_record])
 
 
@@ -193,5 +193,4 @@ def view_article(article_id):
 
 if __name__ == "__main__":
     # app.run(debug=True)
-    app.run(host='0.0.0.0', port='8012', debug=True)
-
+    app.run(host="0.0.0.0", port="8012", debug=True)

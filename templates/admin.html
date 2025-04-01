@@ -24,13 +24,13 @@
         <header>
             <nav>
                 <ul>
+                    <li><a href="/admin">會議通知</a></li>
                     <li><a href="/admin">會議記錄</a></li>
                     <li><a href="/contact">規章</a></li>
                     <li><a href="/">登出</a></li>
                 </ul>
             </nav>
         </header>
-
         <div id="app">
             <button type="button" class="new_btn" data-bs-toggle="modal" data-bs-target="#exampleModal">新增紀錄</button>
             <!-- Modal -->
@@ -42,8 +42,9 @@
                             <h5 class="modal-title" id="exampleModalLabel">
                                 <div class="form-group">
                                     <label for="record_title" class="input_text">會議標題 :</label>
-                                    <input id="record_title" type="text" class="form-control" placeholder="會議標題"
-                                        aria-label="會議標題" aria-describedby="basic-addon1">
+                                    <input id="record_title" type="text" class="form-control"
+                                        placeholder="例：113-2學生代表大會第一次定期大會議程暨關係文書" aria-label="會議標題"
+                                        aria-describedby="basic-addon1">
                                 </div>
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -51,7 +52,7 @@
                         <div class="modal-body">
                             <div class="form-group">
                                 <label for="record_session" class="input_text">屆數 :</label>
-                                <input id="record_session" type="text" class="form-control" placeholder="屆數"
+                                <input id="record_session" type="text" class="form-control" placeholder="例：第二十六屆"
                                     aria-label="屆數" aria-describedby="basic-addon1" v-model="latest_session">
                             </div>
                             <div class="form-group">
@@ -76,48 +77,32 @@
                             </div>
                             <div class="form-group">
                                 <label for="present_list" class="input_text">出席名單 :</label>
-                                <input id="present_list" type="text" class="form-control" placeholder="出席名單"
-                                    aria-label="出席名單" aria-describedby="basic-addon1">
+                                <textarea id="present_list" class="form-control" placeholder="例：議長 王o明、副議長 王x明、......"
+                                    aria-label="出席名單" aria-describedby="basic-addon1"></textarea>
                             </div>
                             <div class="form-group">
                                 <label for="attendance_list" class="input_text">列席名單 :</label>
-                                <input id="attendance_list" type="text" class="form-control" placeholder="列席名單"
-                                    aria-label="列席名單" aria-describedby="basic-addon1">
+                                <textarea id="attendance_list" class="form-control"
+                                    placeholder="例：議長 王o明、副議長 王x明、......" aria-label="列席名單"
+                                    aria-describedby="basic-addon1"></textarea>
                             </div>
                             <div class="input_text">議程</div>
-                            <div class="agenda-item">
-                                <div class="normal_text">一、宣布開會</div>
-                                <button type="button" class="add_button" @click="add_detail(1)">新增細項</button>
-                                <div id="schedule1"></div>
+                            <div v-for="(item, index) in numberedschedule" :key="index">
+                                <div class="agenda-item">
+                                    <div class="normal_text">{{ item.number }}、{{ item.name }}</div>
+                                    <button type="button" class="detail_btn" @click="add_detail(index)">新增細項</button>
+                                </div>
+                                <div :id="'detail' + index">
+                                </div>
+                                <div v-if="index === beforeDiscussion">
+                                    <div class="agenda-item">
+                                        <button type="button" class="schedule_btn" @click="add_schedule()">新增議程</button>
+                                        <input id="schedule_title" type="text" class="form-control"
+                                            placeholder="新增之議程標題 e.g. 人事同意案" aria-label="新增之議程標題"
+                                            aria-describedby="basic-addon1">
+                                    </div>
+                                </div>
                             </div>
-
-                            <div class="agenda-item">
-                                <div class="normal_text">二、確認議程</div>
-                                <button type="button" class="add_button" @click="add_detail(2)">新增細項</button>
-                                <div id="schedule2"></div>
-                            </div>
-
-                            <div class="agenda-item">
-                                <div class="normal_text">三、主席報告</div>
-                                <button type="button" class="add_button" @click="add_detail(3)">新增細項</button>
-                                <div id="schedule3"></div>
-                            </div>
-
-                            <div class="agenda-item">
-                                <div class="normal_text">四、報告事項</div>
-                                <button type="button" class="add_button" @click="add_detail(4)">新增細項</button>
-                                <div id="schedule4"></div>
-                            </div>
-                            <!-- 質詢事項、人事同意事項
-                            討論事項
-                            臨時動議
-                            自由發言
-                            散會 -->
-
-                            <input id="schedule" type="text" class="form-control" placeholder="議程" aria-label="議程"
-                                aria-describedby="basic-addon1">
-                            <textarea id="record_content" class="form-control" placeholder="內容"
-                                id="floatingTextarea"></textarea>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -144,6 +129,30 @@
         new Vue({
             el: '#app',
             data: {
+                chineseNumbers: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"],
+                schedule: [
+                    { name: "宣布開會", details: [] },
+                    { name: "確認議程", details: [] },
+                    { name: "主席報告", details: [] },
+                    { name: "報告事項", details: [] },
+                    { name: "討論事項", details: [] },
+                    { name: "臨時動議", details: [] },
+                    { name: "自由發言", details: [] },
+                    { name: "散會", details: [] },
+                ],
+                mergedschedule: [
+                    { name: "宣布開會", details: [] },
+                    { name: "確認議程", details: [] },
+                    { name: "主席報告", details: [] },
+                    { name: "報告事項", details: [] },
+                    { name: "討論事項", details: [] },
+                    { name: "臨時動議", details: [] },
+                    { name: "自由發言", details: [] },
+                    { name: "散會", details: [] },
+                ], // 合併新增的議程
+                addedschedule: [], // 存放新增的議程
+                details: {}, // 儲存每個議程的細項
+                beforeDiscussion: 3,
                 latest_session: "",
                 scsession: [],
                 record: [],
@@ -152,13 +161,29 @@
                 password: '',
                 errorMessage: '',
                 modalData: {},      // 模態框顯示的資料
-                schedule: { "宣布開會": [], "確認議程": [], "主席報告": [], "報告事項": [], "討論事項": [], "臨時動議": [], "自由發言": [], "散會": [] },
+                // schedule: { "宣布開會": [], "確認議程": [], "主席報告": [], "報告事項": [], "討論事項": [], "臨時動議": [], "自由發言": [], "散會": [] },
             },
             async created() {
                 // 在组件创建时获取后端数据
                 console.log('Vue instance created.');  // Debug log
                 await this.fetchBackendData();
 
+            }, computed: {
+                numberedschedule() {
+                    let before = this.schedule.findIndex(item => item.name === "討論事項");
+                    this.beforeDiscussion = before - 1;
+                    let merged = [
+                        ...this.schedule.slice(0, before),  // 「開會」和「確認議程」
+                        ...this.addedschedule,                     // 新增議程插入這裡
+                        ...this.schedule.slice(before)     // 「主席報告」與「報告事項」後移
+                    ];
+                    this.mergedschedule = merged;
+                    console.log(this.mergedschedule);
+                    return merged.map((item, index) => ({
+                        number: this.chineseNumbers[index], // 轉換為中文數字
+                        name: item.name
+                    }));
+                }
             },
             methods: {
                 // 获取后端数据的方法
@@ -168,7 +193,7 @@
                         if (response.data) { // Debug log
                             this.scsession = response.data[0]
                             this.latest_session = Object.keys(this.scsession)[0];
-                            // console.log('Data fetched:', this.scsession, 'latest:', this.latest_session);
+                            console.log('Data fetched:', this.scsession, 'latest:', this.latest_session);
                         }
                     } catch (error) {
                         console.error("Error fetching data:", error);
@@ -178,27 +203,66 @@
                     var myModal = bootstrap.Modal.getInstance(document.getElementById('exampleModal'));
                     myModal.hide();
                 },
+                parseString(str) {
+                    let result = {};
+                    let items = str.split("、"); // 以逗號（頓號）分割
+
+                    items.forEach(item => {
+                        let parts = item.trim().split(" "); // 以空白分割
+                        let title = parts[0];  // 取職稱
+                        let name = parts.slice(1).join(" "); // 取姓名
+
+                        if (!result[title]) {
+                            result[title] = [];
+                        }
+                        result[title].push(name);
+                    });
+
+                    return result;
+                },
                 async saveChange() {
-                    var title = document.getElementById("record_title").value;
-                    var content = document.getElementById("record_content").value;
+                    // var title = document.getElementById("record_title").value;
                     var session = document.getElementById("record_session").value;
+                    // var date = document.getElementById("record_date").value;
+                    // var place = document.getElementById("record_place").value;
+                    // var person = document.getElementById("contact_person").value;
+                    // var shorthand = document.getElementById("shorthand_link").value;
+                    // var present = this.parseString(document.getElementById("present_list").value);
+                    // var attendance = this.parseString(document.getElementById("attendance_list").value);
+                    let detailData = {}; // 用于存储所有输入框数据
+                    detailData["title"] = document.getElementById("record_title").value;
+                    detailData["session"] = document.getElementById("record_session").value;
+                    detailData["date"] = document.getElementById("record_date").value;
+                    detailData["place"] = document.getElementById("record_place").value;
+                    detailData["person"] = document.getElementById("contact_person").value;
+                    detailData["shorthand"] = document.getElementById("shorthand_link").value;
+                    detailData["present"] = this.parseString(document.getElementById("present_list").value);
+                    detailData["attendance"] = this.parseString(document.getElementById("attendance_list").value);
+                    // console.log(title, session, date, place, person, shorthand, present, attendance);
+                    // console.log(this.mergedschedule);
+                    // // {議長: ["王12", "王大明", "王1,2", "王3大明"], 議長12: ["王大明", "王大明", "王大明"], 議長2: ["王大明"]}
+                    for (i = 0; i < this.mergedschedule.length; i++) {
+                        console.log(this.mergedschedule[i].name);
+                        if (this.mergedschedule[i].details.length > 0) {
+                            for (j = 0; j < this.mergedschedule[i].details.length; j++) {
+                                var str = "detail" + i.toString() + "_" + (j).toString();
+                                let detailContent = document.getElementById(str).value;
+                                this.mergedschedule[i].details[j].content = detailContent;
+                                // detailData[this.mergedschedule[i].name] = this.mergedschedule[i].details.map(detail => detail.content);
+                            }
+                        }
+                    }
+                    detailData["content"] = this.mergedschedule.map(schedule => ({
+                        name: schedule.name,
+                        details: schedule.details.map(detail => detail.content)
+                    }));
+                    console.log(detailData["content"]);
                     try {
                         if (session in this.scsession) {
-                            const response = axios.post('/newRecord', {
-                                session: session,
-                                title: title,
-                                content: content
-                            });
-                            this.scsession[session].push({
-                                title: title,
-                                content: content
-                            });
+                            const response = axios.post('/newRecord', detailData);
+                            this.scsession[session].push(detailData);
                         } else {
-                            const response = await axios.post('/newRecord', {
-                                session: session,
-                                title: title,
-                                content: content
-                            });
+                            const response = await axios.post('/newRecord', detailData);
                             this.scsession = response.data[0]
                             this.latest_session = Object.keys(this.scsession)[0];
                         }
@@ -209,16 +273,27 @@
                         console.log(error)
                     }
                 },
-                add_detail(idx) {
-                    console.log(idx, Object.keys(this.schedule)[idx]);
-                    const input = document.createElement("input");
-                    input.type = "text";
-                    input.className = "form-control";
-                    input.placeholder = "請輸入內容";
-                    var str = "schedule" + (idx.toString());
-                    document.getElementById(str).appendChild(input);
+                add_detail(index) {
+                    console.log(`${index}在 ${this.chineseNumbers[index]}、${this.mergedschedule[index].name}下新增細項`);
+                    // let number = this.chineseNumbers[index]; // 取得對應的中文數字
+                    this.mergedschedule[index].details.push({ content: "" });
+                    const textarea = document.createElement("textarea");
+                    textarea.className = "form-control";
+                    textarea.id = "detail" + index.toString() + "_" + (this.mergedschedule[index].details.length - 1).toString();
+                    textarea.placeholder = "請輸入內容";
+                    var str = "detail" + (index.toString());
+                    document.getElementById(str).appendChild(textarea);
+                },
+                add_schedule() {
+                    var schedule_title = document.getElementById("schedule_title").value;
+                    let newscheduleName = schedule_title;
+                    this.addedschedule.push({
+                        name: newscheduleName,
+                        details: []
+                    });
+                    // console.log("新增議程", newschethis.schedule[index].nameduleName);
 
-                }
+                },
             },
             mounted() {
 
