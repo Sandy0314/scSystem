@@ -32,6 +32,20 @@
             </nav>
         </header>
         <div id="app">
+
+            <h2>上傳檔案到 AWS S3</h2>
+
+            <input type="file" @change="selectFile">
+            <button @click="uploadFile">上傳</button>
+
+            <div v-if="fileUrl">
+                <h3>下載連結：</h3>
+                <a :href="fileUrl" download="filename">點擊下載</a>
+
+                <!-- <a :href="fileUrl" target="_blank">{{ fileUrl }}</a> -->
+            </div>
+
+
             <button type="button" class="new_btn" data-bs-toggle="modal" data-bs-target="#exampleModal">新增紀錄</button>
             <!-- Modal -->
             <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel"
@@ -129,6 +143,8 @@
         new Vue({
             el: '#app',
             data: {
+                selectedFile: null,
+                fileUrl: "",
                 chineseNumbers: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"],
                 schedule: [
                     { name: "宣布開會", details: [] },
@@ -294,6 +310,32 @@
                     // console.log("新增議程", newschethis.schedule[index].nameduleName);
 
                 },
+                selectFile(event) {
+                    this.selectedFile = event.target.files[0];
+                },
+                async uploadFile() {
+                    if (!this.selectedFile) {
+                        alert("請選擇檔案");
+                        return;
+                    }
+
+                    let formData = new FormData();
+                    formData.append("file", this.selectedFile);
+
+                    try {
+                        let response = await fetch("/upload", { method: "POST", body: formData });
+                        let result = await response.json();
+
+                        if (response.ok) {
+                            this.fileUrl = result.file_url;
+                        } else {
+                            alert(result.error || "上傳失敗");
+                        }
+                    } catch (error) {
+                        console.error("上傳錯誤", error);
+                        alert("發生錯誤，請稍後再試");
+                    }
+                }
             },
             mounted() {
 

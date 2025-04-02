@@ -1,4 +1,6 @@
 import json
+import os
+import boto3
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_login import (
     LoginManager,
@@ -16,6 +18,20 @@ app.secret_key = "your_secret_key"  # 用于加密会话
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"  # 未登入時會重定向到 login 頁面
+
+
+# 設定 AWS S3
+S3_BUCKET = "ntusc-files"
+S3_REGION = "ap-southeast-1"  # 修改為你的 AWS 區域
+S3_KEY = os.getenv("AWS_ACCESS_KEY_ID")
+S3_SECRET = os.getenv("AWS_SECRET_ACCESS_KEY")
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=S3_KEY,
+    aws_secret_access_key=S3_SECRET,
+    region_name=S3_REGION,
+)
 
 # 假设文章存储在字典中
 articles = {}
@@ -176,6 +192,24 @@ def newRecord():
     flipped_record = dict(reversed(record[0].items()))
     print(flipped_record)
     return json.dumps([flipped_record])
+
+
+# **📌 上傳 API**
+@app.route("/upload", methods=["POST"])
+def upload_file():
+    if "file" not in request.files:
+        return jsonify({"error": "請上傳檔案"}), 400
+
+    file = request.files["file"]
+    file_name = file.filename
+
+    # **上傳並設為「public-read」**
+    s3.upload_fileobj(file, S3_BUCKET, file_name, ExtraArgs={"ACL": "public-read"})
+
+    # **產生公開 URL**
+    file_url = f"https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/{file_name}"
+
+    return jsonify({"message": "檔案上傳成功", "file_url": file_url})
 
 
 @app.route("/admin/article/<int:article_id>", methods=["GET", "POST"])
