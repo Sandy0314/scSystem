@@ -24,7 +24,7 @@
         <header>
             <nav>
                 <ul>
-                    <li><a href="/admin">會議通知</a></li>
+                    <li><a href="/admin/notifi">會議通知</a></li>
                     <li><a href="/admin/minutes">會議記錄</a></li>
                     <li><a href="/admin/regulations">規章</a></li>
                     <li><a href="/logout">登出</a></li>
@@ -32,23 +32,31 @@
             </nav>
         </header>
         <div id="app">
-
-            <!-- <input type="file" @change="selectFile">
-            <button @click="uploadFile">上傳</button> -->
-            <!-- <a :href="fileUrl" download="filename">點擊下載</a> -->
-            <button type="button" class="new_btn" data-bs-toggle="modal" data-bs-target="#exampleModal">新增紀錄</button>
+            <button class="new_btn" @click="openModal(-1)">新增紀錄</button>
+            <div v-if="loading" class="loading-overlay">
+                <div class="loading-box">
+                    <div class="spinner-border custom-spinner" role="status"></div>
+                    <span class="loading-text">載入中...</span>
+                </div>
+            </div>
+            <div v-for="(items, key) in scsession" :key="key" class="section">
+                <h1>{{ key }}</h1>
+                <div v-for="item in items" :key="item.id">
+                    <button class="item_btn" @click="openModal(item.id)">{{ item.title }}</button>
+                </div>
+            </div>
             <!-- Modal -->
-            <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel"
-                aria-hidden="true">
+            <div class="modal fade" id="itemModal" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true"
+                data-bs-backdrop="static">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title" id="exampleModalLabel">
+                            <h5 class="modal-title" id="itemModalLabel">
                                 <div class="form-group">
-                                    <label for="record_title" class="input_text">會議標題 :</label>
+                                    <label for="record_title" class="input_text">會議通知紀錄 :</label>
                                     <input id="record_title" type="text" class="form-control"
                                         placeholder="例：113-2學生代表大會第一次定期大會議程暨關係文書" aria-label="會議標題"
-                                        aria-describedby="basic-addon1">
+                                        aria-describedby="basic-addon1" v-model="modalTitle">
                                 </div>
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -57,73 +65,122 @@
                             <div class="form-group">
                                 <label for="record_session" class="input_text">屆數 :</label>
                                 <input id="record_session" type="text" class="form-control" placeholder="例：第二十六屆"
-                                    aria-label="屆數" aria-describedby="basic-addon1" v-model="latest_session">
+                                    aria-label="屆數" aria-describedby="basic-addon1" v-model="modalSession">
                             </div>
                             <div class="form-group">
                                 <label for="record_date" class="input_text">會議日期 :</label>
                                 <input id="record_date" type="datetime-local" class="form-control" aria-label="會議日期"
-                                    aria-describedby="basic-addon1">
+                                    aria-describedby="basic-addon1" v-model="modalDate">
                             </div>
                             <div class="form-group">
                                 <label for="record_place" class="input_text">會議地點 :</label>
                                 <input id="record_place" type="text" class="form-control" placeholder="會議地點"
-                                    aria-label="會議地點" aria-describedby="basic-addon1">
+                                    aria-label="會議地點" aria-describedby="basic-addon1" v-model="modalPlace">
                             </div>
                             <div class="form-group">
                                 <label for="contact_person" class="input_text">會議聯絡人 :</label>
                                 <input id="contact_person" type="text" class="form-control" placeholder="會議聯絡人"
-                                    aria-label="會議聯絡人" aria-describedby="basic-addon1">
+                                    aria-label="會議聯絡人" aria-describedby="basic-addon1" v-model="modalPerson">
                             </div>
                             <div class="form-group">
                                 <label for="shorthand_link" class="input_text">速記連結 :</label>
                                 <input id="shorthand_link" type="text" class="form-control" placeholder="速記連結"
-                                    aria-label="速記連結" aria-describedby="basic-addon1">
+                                    aria-label="速記連結" aria-describedby="basic-addon1" v-model="modalShorthand">
                             </div>
                             <div class="form-group">
                                 <label for="present_list" class="input_text">出席名單 :</label>
                                 <textarea id="present_list" class="form-control" placeholder="例：議長 王o明、副議長 王x明、......"
-                                    aria-label="出席名單" aria-describedby="basic-addon1"></textarea>
+                                    aria-label="出席名單" aria-describedby="basic-addon1" v-model="modalPresent"></textarea>
                             </div>
                             <div class="form-group">
                                 <label for="attendance_list" class="input_text">列席名單 :</label>
                                 <textarea id="attendance_list" class="form-control"
                                     placeholder="例：議長 王o明、副議長 王x明、......" aria-label="列席名單"
-                                    aria-describedby="basic-addon1"></textarea>
+                                    aria-describedby="basic-addon1" v-model="modalAttendance"></textarea>
                             </div>
                             <div class="input_text">議程</div>
-                            <div v-for="(item, index) in numberedschedule" :key="index">
-                                <div class="agenda-item">
-                                    <div class="normal_text">{{ item.number }}、{{ item.name }}</div>
-                                    <button type="button" class="detail_btn" @click="add_detail(index)">新增細項</button>
-                                </div>
-                                <div :id="'detail' + index">
-                                </div>
-                                <div v-if="index === beforeDiscussion">
+                            <div v-for="(schedule, index) in numberedMergedSchedule" :key="index" class="mb-4">
+                                <div v-if="index === modalbeforeDiscussion">
                                     <div class="agenda-item">
                                         <button type="button" class="schedule_btn" @click="add_schedule()">新增議程</button>
                                         <input id="schedule_title" type="text" class="form-control"
-                                            placeholder="新增之議程標題 e.g. 人事同意案" aria-label="新增之議程標題"
-                                            aria-describedby="basic-addon1">
+                                            placeholder="新增之議程標題 e.g. 人事同意案" aria-label="新增之議程標題">
+                                    </div>
+                                    <br>
+                                </div>
+                                <!-- 議程標題 -->
+                                <div class="agenda-item">
+                                    <div class="normal_text">{{ schedule.number }}、{{ schedule.title }}</div>
+                                    <div v-if="!isTitleRestricted(schedule.title)">
+                                        <button class="btn delete_btn" @click="deleteSchedule(index)">刪除議程</button>
                                     </div>
                                 </div>
+                                <!-- 細項列表 -->
+                                <div v-for="(detail, dIndex) in schedule.details" :key="dIndex" class="detail-wrapper">
+                                    <textarea class="form-control mb-2" v-model="detail.content"
+                                        :ref="`detailTextarea-${index}-${dIndex}`" placeholder="請輸入內容">
+                                              </textarea>
+                                    <!-- 舊有檔案列表 -->
+                                    <div v-if="detail.file_urls && detail.file_urls.length" class="mb-2"
+                                        :ref="`oldFiles-${index}-${dIndex}`">
+                                        <div class="fw-bold text-start">原始檔案：</div>
+                                        <div v-for="(url, fIndex) in detail.file_urls" :key="'old-' + fIndex"
+                                            class="d-flex align-items-center mb-1">
+                                            <a :href="url" target="_blank" class="me-2">{{
+                                                detail.file_names[fIndex] }}</a>
+                                            <button class="btn btn-danger btn-sm delete_btn"
+                                                @click="deleteFile(index, dIndex, fIndex, 'old')">刪除檔案</button>
+                                        </div>
+                                    </div>
+                                    <!-- 新增檔案列表 -->
+                                    <div v-if="detail.new_files && detail.new_files.length" class="mb-2"
+                                        :ref="`newFiles-${index}-${dIndex}`">
+                                        <div class="fw-bold text-start">新增檔案：</div>
+                                        <div v-for="(file, nfIndex) in detail.new_files" :key="'new-' + nfIndex"
+                                            class="d-flex align-items-center mb-1">
+                                            <span class="me-2">{{ file.name }}</span>
+                                            <button class="btn btn-danger btn-sm delete_btn"
+                                                @click="deleteFile(index, dIndex, nfIndex, 'new')">刪除檔案</button>
+                                        </div>
+                                    </div>
+                                    <!-- 檔案上傳 input -->
+                                    <input type="file" @change="handleNewFileChange($event, index, dIndex)"
+                                        class="form-control mt-2">
+
+                                </div>
+                                <div class="agenda-item">
+                                    <button class="btn detail_btn" @click="add_detail(index)">新增細項</button>
+                                    <div v-if="schedule.details.length > 0">
+                                        <button class="btn delete_btn" @click="deleteDetail(index)">
+                                            刪除細項
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="agenda-item mb-3 d-flex align-items-center">
+                                <label class="input_text mb-0 me-2" style="min-width: auto;">是否上架：</label>
+                                <label class="switch">
+                                    <input type="checkbox" v-model="is_visible" />
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="ms-2">{{ is_visible ? '上架中' : '未上架' }}</span>
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary" @click="saveChange()">Save
-                                changes</button>
+                            <button type="button" class="btn btn-primary" @click="saveChange(userid)">儲存會議通知</button>
+                            <div v-if="uploading" class="uploading-overlay">
+                                <div class="uploading-box">
+                                    <div class="spinner-border custom-spinner" role="status"></div>
+                                    <span class="uploading-text">上傳中，請稍候...
+                                        請不要離開此頁面</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div v-for="(items, key) in scsession" :key="key" class="section">
-                <h1>{{ key }}</h1>
-                <div v-for="item in items" :key="item.id">
-                    <button class="item_btn">{{ item.title }}</button>
-                </div>
-            </div>
         </div>
-
         <!-- Footer -->
         <footer>
             <p>&copy; 2025 Your Company. All rights reserved.</p>
@@ -133,385 +190,429 @@
         new Vue({
             el: '#app',
             data: {
-                selectedFile: null,
-                fileUrl: "",
-                chineseNumbers: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"],
-                schedule: [
-                    { name: "宣布開會", details: [] },
-                    { name: "確認議程", details: [] },
-                    { name: "主席報告", details: [] },
-                    { name: "報告事項", details: [] },
-                    { name: "討論事項", details: [] },
-                    { name: "臨時動議", details: [] },
-                    { name: "自由發言", details: [] },
-                    { name: "散會", details: [] },
+                uploading: false,
+                loading: false,
+                chineseNumbers: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十", "二十一", "二十二", "二十三", "二十四", "二十五", "二十六", "二十七"],
+                restrictedTitles: [
+                    "宣布開會", "確認議程", "主席報告", "報告事項", "討論事項", "臨時動議", "自由發言", "散會"
                 ],
-                mergedschedule: [
-                    { name: "宣布開會", details: [] },
-                    { name: "確認議程", details: [] },
-                    { name: "主席報告", details: [] },
-                    { name: "報告事項", details: [] },
-                    { name: "討論事項", details: [] },
-                    { name: "臨時動議", details: [] },
-                    { name: "自由發言", details: [] },
-                    { name: "散會", details: [] },
-                ], // 合併新增的議程
-                addedschedule: [], // 存放新增的議程
-                details: {}, // 儲存每個議程的細項
-                beforeDiscussion: 3,
                 latest_session: "",
-                scsession: [],
-                record: [],
-                message: 'Please log in',
-                username: '',
-                password: '',
-                errorMessage: '',
-                modalData: {},      // 模態框顯示的資料
-                // message: 'Welcome',
-                currentPath: window.location.pathname,
-
+                scsession: {},
+                session_list: [],
+                modalTitle: '',  // 绑定到 input 的值
+                modalSession: '',
+                modalPlace: '',
+                modalPerson: '',
+                modalShorthand: '',
+                modalDate: '',
+                modalPresent: '',
+                modalAttendance: '',
+                modalSchedule: [],// 原始資料
+                modalDetails: '',
+                modaladdedschedule: [],
+                userid: 0,
+                is_visible: true,
+                hasEmptyContent: false
             },
             async created() {
-                // 在组件创建时获取后端数据
-                console.log('Vue instance created.');  // Debug log
                 await this.fetchBackendData();
-
-
             },
             computed: {
-                numberedschedule() {
-                    let before = this.schedule.findIndex(item => item.name === "討論事項");
-                    this.beforeDiscussion = before - 1;
-                    let merged = [
-                        ...this.schedule.slice(0, before),  // 「開會」和「確認議程」
-                        ...this.addedschedule,                     // 新增議程插入這裡
-                        ...this.schedule.slice(before)     // 「主席報告」與「報告事項」後移
+                modalbeforeDiscussion() {
+                    return this.modalSchedule.findIndex(item => item.title === "報告事項") + 1;
+                },
+                numberedMergedSchedule() {
+                    const before = this.modalSchedule.findIndex(item => item.title === "討論事項");
+                    const merged = [
+                        ...this.modalSchedule.slice(0, before),
+                        ...this.modaladdedschedule,
+                        ...this.modalSchedule.slice(before)
                     ];
-                    this.mergedschedule = merged;
-                    console.log(this.mergedschedule);
                     return merged.map((item, index) => ({
-                        number: this.chineseNumbers[index], // 轉換為中文數字
-                        name: item.name
+                        ...item,
+                        number: this.chineseNumbers[index],
+                        details: item.details || [],
                     }));
                 }
             },
             methods: {
-                // 获取后端数据的方法
-                async fetchBackendData() {
+                async fetchBackendData() {// 获取后端数据的方法
                     try {
-                        const response = await axios.get('/admin/data'); // 假设你的后端 API 路径是 '/api/data'
-                        if (response.data) { // Debug log
-                            this.scsession = response.data[0]
-                            this.latest_session = Object.keys(this.scsession)[0];
-                            console.log('Data fetched:', this.scsession, 'latest:', this.latest_session);
+                        const response = await axios.get('/admin/minutes/data');
+                        if (response.data) {
+                            this.session_list = response.data.session_list;
+                            const tmp = response.data.records;
+                            for (let i = 0; i < tmp.length; i++) {
+                                if (!(tmp[i]["session"] in this.scsession)) {
+                                    this.$set(this.scsession, tmp[i]["session"], []);
+                                }
+                                this.scsession[tmp[i]["session"]].push(tmp[i]);
+                            }
+                            this.latest_session = this.session_list[0];
                         }
                     } catch (error) {
-                        console.error("Error fetching data:", error);
+                        alert(`無法正確取得資料，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
                     }
                 },
                 closeModal() {
-                    var myModal = bootstrap.Modal.getInstance(document.getElementById('exampleModal'));
+                    var myModal = bootstrap.Modal.getInstance(document.getElementById('itemModal'));
                     myModal.hide();
                 },
+                isTitleRestricted(title) {// 判断标题是否在不允许删除的列表中
+                    return this.restrictedTitles.includes(title);
+                },
                 parseString(str) {
-                    let result = {};
+                    const result = [];
+                    if (!str || str.trim() === "") throw new Error("輸入不能為空白");
 
-                    // 如果是空白字串則報錯
-                    if (!str || str.trim() === "") {
-                        throw new Error("輸入不能為空白");
+                    if (/^\S+$/.test(str.trim())) {
+                        const items = str.trim().split("、")
+                        return [{ role: items[0], members: [] }];
                     }
 
-                    // 如果是「全體員工」或其他無空格的字串，直接回傳
-                    if (/^\S+$/.test(str.trim())) {  // 判斷是否為無空格的字串
-                        return { [str.trim()]: [] };
-                    }
-
-                    // 用頓號分隔
-                    let items = str.split("、").map(item => item.trim()).filter(item => item !== "");
+                    const items = str.split("、")
+                        .map(item => item.trim())
+                        .filter(item => item !== "");
 
                     items.forEach(item => {
-                        // 使用正規表達式移除多重空白，只保留一個空格
                         item = item.replace(/\s+/g, " ");
-                        let parts = item.split(" ");
+                        const parts = item.split(" ");
 
-                        // 如果格式錯誤（只有職稱而沒有姓名），跳過該項
-                        if (parts.length < 2) return;
-
-                        let title = parts[0];
-                        let name = parts.slice(1).join(" ");
-
-                        if (!result[title]) {
-                            result[title] = [];
+                        if (parts.length < 2) {
+                            result.push({ role: parts[0], members: [] });
+                            return;
                         }
-                        result[title].push(name);
-                    });
 
+                        const role = parts[0];
+                        const name = parts.slice(1).join(" ");
+
+                        let existing = result.find(entry => entry.role === role);
+                        if (existing) {
+                            existing.members.push(name);
+                        } else {
+                            result.push({ role, members: [name] });
+                        }
+                    });
                     return result;
                 },
-                async saveChange() {
+                async openModal(itemID) {
+                    const modalEl = document.getElementById("itemModal");
+                    this.userid = itemID
+                    console.log('userid', this.userid)
+                    this.modaladdedschedule = []; //  清空新增議程（避免堆疊）
+                    this.modalTitle = ""
+                    this.modalSession = this.latest_session
+                    this.modalPlace = ""
+                    this.modalPerson = ""
+                    this.modalShorthand = ""
+                    this.modalDate = ""
+                    this.modalPresent = ""
+                    this.modalAttendance = ""
+                    this.is_visible = true
+                    this.modalSchedule = [
+                        { title: "宣布開會", details: [] },
+                        { title: "確認議程", details: [] },
+                        { title: "主席報告", details: [] },
+                        { title: "報告事項", details: [] },
+                        { title: "討論事項", details: [] },
+                        { title: "臨時動議", details: [] },
+                        { title: "自由發言", details: [] },
+                        { title: "散會", details: [] },
+                    ]
+                    this.modalDetails = ''
+
+                    if (!(itemID === -1)) {
+                        await this.getdetail(itemID);
+                    }
+                    this.loading = false;
+                    // 資料準備好再開啟 modal
+                    const modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                },
+                async getdetail(itemID) {
+                    this.loading = true;
+                    this.modalSession = ""
+                    this.modalSchedule = []
+                    try {
+                        const response = await axios.get(`/admin/minutes/data/${itemID}`);
+                        if (response.data) {
+                            const tmp = response.data.records[0];
+                            this.modalTitle = tmp.title
+                            this.modalSession = tmp.session
+                            this.modalPlace = tmp.place
+                            this.modalPerson = tmp.person
+                            this.modalShorthand = tmp.shorthand
+                            this.modalDate = this.formatDate(new Date(tmp.date))
+                            this.is_visible = tmp.is_visible
+                            console.log(tmp)
+                            let present = tmp.present
+                            for (let key in present) {
+                                if (present[key].members.length == 0) {
+                                    this.modalPresent = this.modalPresent + `${present[key].role}、`
+                                }
+                                else {
+                                    for (let v in present[key].members) {
+                                        this.modalPresent = this.modalPresent + `${present[key].role} ${present[key].members[v]}、`
+                                    }
+                                }
+                            }
+                            let attendance = tmp.attendance
+                            for (let key in attendance) {
+                                if (attendance[key].members.length == 0) {
+                                    this.modalAttendance = this.modalAttendance + `${attendance[key].role}、`
+                                }
+                                else {
+                                    for (let v in attendance[key].members) {
+                                        this.modalAttendance = this.modalAttendance + `${attendance[key].role} ${attendance[key].members[v]}、`
+                                    }
+                                }
+                            }
+                            let schedules = tmp.schedules
+                            schedules.sort((a, b) => a.id - b.id);
+
+                            for (let idx in schedules) {
+                                let details = schedules[idx].details
+                                let detail = []
+                                details.sort((a, b) => a.id - b.id);
+                                for (let dIndex in details) {
+                                    detail.push({
+                                        content: details[dIndex].content,
+                                        files: [],
+                                        file_urls: details[dIndex].file_urls || [],
+                                        file_names: details[dIndex].file_name || [],
+                                    }
+                                    )
+                                }
+                                this.modalSchedule.push({
+                                    title: schedules[idx].title,
+                                    details: detail
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        alert(`無法取得此筆資料，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+                async saveChange(id) {
+                    console.log('儲存ID = ', id, '的通知')
+                    const title = document.getElementById("record_title").value.trim();
+                    const session = document.getElementById("record_session").value.trim();
+                    const date = document.getElementById("record_date").value.trim();
+                    const place = this.modalPlace.trim();
+                    const person = this.modalPerson.trim();
+                    const present = this.modalPresent
+                    const attendance = document.getElementById("attendance_list").value
+                    const is_visible = this.is_visible
+                    // ✅ 基本欄位驗證
+                    if (!title || !session || !date || !place || !person || !present || !attendance) {
+                        alert("請填寫所有必填欄位（標題、屆次、日期、地點、聯絡人、出席名單、列席名單）");
+                        return;
+                    }
                     const formData = new FormData();
 
                     // 基本欄位
-                    formData.append("title", document.getElementById("record_title").value);
-                    formData.append("session", document.getElementById("record_session").value);
-                    formData.append("date", document.getElementById("record_date").value);
-                    formData.append("place", document.getElementById("record_place").value);
-                    formData.append("person", document.getElementById("contact_person").value);
+                    formData.append("id", id);
+                    formData.append("is_visible", is_visible);
+                    formData.append("title", title);
+                    formData.append("session", session);
+                    formData.append("date", date);
+                    formData.append("place", place);
+                    formData.append("person", person);
                     formData.append("shorthand", document.getElementById("shorthand_link").value);
-                    formData.append("present", JSON.stringify(this.parseString(document.getElementById("present_list").value)));
-                    formData.append("attendance", JSON.stringify(this.parseString(document.getElementById("attendance_list").value)));
+                    formData.append("present", JSON.stringify(this.parseString(present)));
+                    formData.append("attendance", JSON.stringify(this.parseString(attendance)));
 
-                    const content = [];
+                    const StructuredContent = this.getStructuredContentFromRefs();
 
-                    for (let i = 0; i < this.mergedschedule.length; i++) {
-                        const schedule = this.mergedschedule[i];
-                        const details = [];
-
-                        for (let j = 0; j < schedule.details.length; j++) {
-                            const detailId = `detail${i}_${j}`;
-                            const contentValue = document.getElementById(detailId).value;
-                            this.mergedschedule[i].details[j].content = contentValue;
-
-                            const detail = {
-                                content: contentValue,
-                                files: []
-                            };
-
-                            const fileList = this.mergedschedule[i].details[j].files;
-                            for (let k = 0; k < fileList.length; k++) {
-                                const file = fileList[k];
-                                if (file !== null) {
-                                    const fieldName = `file_${i}_${j}_${k}`;
-                                    formData.append(fieldName, file);
-                                    detail.files.push(fieldName); // 回傳時可對應 file_url
+                    if (!this.hasEmptyContent) {// content 要轉成 JSON 字串送到後端
+                        formData.append("content", JSON.stringify(StructuredContent));
+                        // 把所有 new_files 一起 append 到 formData（用多個檔名區分）
+                        StructuredContent.forEach((schedule, scheduleIndex) => {
+                            schedule.details.forEach((detail, detailIndex) => {
+                                detail.files.forEach((file, fileIndex) => {
+                                    if (file instanceof File) {
+                                        // 例如命名成 newfile-0-0-0 對應 scheduleIndex-detailIndex-fileIndex
+                                        const fieldName = `newfile-${scheduleIndex}-${detailIndex}-${fileIndex}`;
+                                        formData.append(fieldName, file);
+                                    }
+                                });
+                            });
+                        });
+                        this.uploading = true;
+                        try {
+                            const response = await axios.post("/newRecord", formData, {
+                                headers: {
+                                    "Content-Type": "multipart/form-data"
                                 }
+                            });
+                            if (response.data) {
+                                this.session_list = response.data.session_list;
+                                const tmp = response.data.records;
+                                for (let i = 0; i < tmp.length; i++) {
+                                    if (!(tmp[i]["session"] in this.scsession)) {
+                                        this.$set(this.scsession, tmp[i]["session"], []);
+                                    }
+                                    this.scsession[tmp[i]["session"]].push(tmp[i]);
+                                }
+                                this.latest_session = this.session_list[0];
                             }
-
-                            details.push(detail);
+                            this.closeModal();
+                            this.uploading = false;
+                            window.location.reload();
+                        } catch (error) {
+                            alert(`上傳/修改失敗，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
+                            this.uploading = false;
                         }
-
-                        content.push({
-                            name: schedule.name,
-                            details
-                        });
                     }
-
-                    // content 要轉成 JSON 字串送到後端
-                    formData.append("content", JSON.stringify(content));
-
-                    try {
-                        const response = await axios.post("/newRecord", formData, {
-                            headers: {
-                                "Content-Type": "multipart/form-data"
-                            }
-                        });
-
-                        // 🔄 更新回來的資料
-                        if (response.data && response.data.updatedData) {
-                            this.scsession = response.data.updatedData;
-                            this.latest_session = Object.keys(this.scsession)[0];
-                            console.log("已更新 scsession：", this.scsession, this.latest_session);
-                        }
-
-                        this.closeModal();
-                        window.location.reload();
-                    } catch (error) {
-                        console.error("上傳失敗：", error);
-                    }
-                }
-                ,
-                // async saveChange() {
-                //                     var session = document.getElementById("record_session").value;
-                //                     let detailData = {}; // 用于存储所有输入框数据
-                //                     detailData["title"] = document.getElementById("record_title").value;
-                //                     detailData["session"] = document.getElementById("record_session").value;
-                //                     detailData["date"] = document.getElementById("record_date").value;
-                //                     detailData["place"] = document.getElementById("record_place").value;
-                //                     detailData["person"] = document.getElementById("contact_person").value;
-                //                     detailData["shorthand"] = document.getElementById("shorthand_link").value;
-                //                     detailData["present"] = this.parseString(document.getElementById("present_list").value);
-                //                     detailData["attendance"] = this.parseString(document.getElementById("attendance_list").value);
-                //                     for (i = 0; i < this.mergedschedule.length; i++) {
-                //                         console.log(this.mergedschedule[i].name);
-                //                         if (this.mergedschedule[i].details.length > 0) {
-                //                             for (j = 0; j < this.mergedschedule[i].details.length; j++) {
-                //                                 var str = "detail" + i.toString() + "_" + (j).toString();
-                //                                 let detailContent = document.getElementById(str).value;
-                //                                 this.mergedschedule[i].details[j].content = detailContent;
-                //                                 // detailData[this.mergedschedule[i].name] = this.mergedschedule[i].details.map(detail => detail.content);
-                //                             }
-                //                         }
-                //                     }
-                //                     detailData["content"] = this.mergedschedule.map(schedule => ({
-                //                         name: schedule.name,
-                //                         details: schedule.details.map(detail => detail.content)
-                //                     }));
-                //                     // detailData["file"]
-                //                     console.log(detailData["content"]);
-                //                     try {
-                //                         if (session in this.scsession) {
-                //                             const response = axios.post('/newRecord', detailData);
-                //                             this.scsession[session].push(detailData);
-                //                         } else {
-                //                             const response = await axios.post('/newRecord', detailData);
-                //                             this.scsession = response.data[0]
-                //                             this.latest_session = Object.keys(this.scsession)[0];
-                //                         }
-                //                         console.log('Data fetched:', this.scsession);
-                //                         this.closeModal();
-                //                         window.location.reload();
-                //                     } catch (error) {
-                //                         console.log(error)
-                //                     }
-                //                 },
+                    this.hasEmptyContent = false
+                },
                 add_detail(index) {
-                    console.log(`${index}在 ${this.chineseNumbers[index]}、${this.mergedschedule[index].name}下新增細項`);
-                    // let number = this.chineseNumbers[index]; // 取得對應的中文數字
-                    // 加入一筆新的細項資料結構
-                    this.mergedschedule[index].details.push({
-                        content: "",
-                        files: []
+                    const target = this.numberedMergedSchedule;
+                    target[index].details.push({
+                        content: '',
+                        file_urls: [],
+                        file_names: [],
+                        deleted_files: [],
                     });
-                    const textarea = document.createElement("textarea");
-                    textarea.className = "form-control";
-                    textarea.placeholder = "請輸入內容";
-                    const detailIndex = this.mergedschedule[index].details.length - 1;
-                    textarea.id = `detail${index}_${detailIndex}`;
-
-                    // 建立檔案區塊容器（起初是空的）
-                    const fileContainer = document.createElement("div");
-                    fileContainer.className = "file-container mb-2";
-                    fileContainer.id = `fileContainer_${index}_${detailIndex}`;
-
-                    // 建立新增檔案按鈕（第一次不附帶檔案 input）
-                    const addFileBtn = document.createElement("button");
-                    addFileBtn.textContent = "新增檔案";
-                    addFileBtn.className = "btn btn-secondary btn-sm mt-2";
-                    addFileBtn.addEventListener("click", () => {
-                        this.createFileInput(index, detailIndex, fileContainer);
-                    });
-
-                    // 包起來放進畫面
-                    const wrapper = document.createElement("div");
-                    wrapper.className = "detail-wrapper border p-2 mb-3 rounded";
-                    wrapper.appendChild(textarea);
-                    wrapper.appendChild(fileContainer);
-                    wrapper.appendChild(addFileBtn);
-
-                    const container = document.getElementById(`detail${index}`);
-                    container.appendChild(wrapper);
-
-                    // 建立 input[type="file"]
-                    // const fileInput = document.createElement("input");
-                    // fileInput.type = "file";
-                    // fileInput.className = "form-control mt-2";
-                    // fileInput.addEventListener("change", (event) => {
-                    //     this.selectFile(event, index, detailIndex);
-                    // });
-                    // // 建立上傳按鈕
-                    // const uploadButton = document.createElement("button");
-                    // uploadButton.className = "btn btn-primary mt-2";
-                    // uploadButton.innerText = "上傳";
-                    // uploadButton.addEventListener("click", () => {
-                    //     this.uploadFile(index, detailIndex);
-                    // });
-
-                    // // 將所有元素加到對應的 detail 區塊中
-                    // const containerId = `detail${index}`;
-                    // const container = document.getElementById(containerId);
-                    // container.appendChild(textarea);
-                    // container.appendChild(fileInput);
-                    // container.appendChild(uploadButton);
-                    // var str = "detail" + (index.toString());
-                    // document.getElementById(str).appendChild(textarea);
-
-
-
+                },
+                deleteDetail(scheduleIndex) {
+                    // 確保細項存在
+                    const schedule = this.numberedMergedSchedule[scheduleIndex];
+                    if (schedule && schedule.details && schedule.details.length > 0) {
+                        const detailIndex = schedule.details.length - 1
+                        const detail = schedule.details[detailIndex];
+                        // 刪除舊檔案
+                        if (detail.file_urls && detail.file_urls.length) {
+                            detail.file_urls = [];
+                            detail.file_names = [];
+                        }
+                        // 刪除新增檔案
+                        if (detail.new_files && detail.new_files.length) {
+                            detail.new_files = [];
+                        }
+                        // 最後刪除細項
+                        schedule.details.splice(detailIndex, 1);
+                    }
                 },
                 add_schedule() {
-                    var schedule_title = document.getElementById("schedule_title").value;
-                    let newscheduleName = schedule_title;
-                    this.addedschedule.push({
-                        name: newscheduleName,
-                        details: []
-                    });
-                    // console.log("新增議程", newschethis.schedule[index].nameduleName);
-
-                },
-                createFileInput(index, detailIndex, fileContainer) {
-                    const fileIndex = this.mergedschedule[index].details[detailIndex].files.length;
-
-                    // 建立 input[type=file]
-                    const fileInput = document.createElement("input");
-                    fileInput.type = "file";
-                    fileInput.className = "form-control d-inline-block w-auto me-2";
-                    fileInput.addEventListener("change", (event) => {
-                        this.handleFileChange(event, index, detailIndex, fileIndex);
-                    });
-
-                    // 建立刪除按鈕
-                    const deleteBtn = document.createElement("button");
-                    deleteBtn.textContent = "刪除";
-                    deleteBtn.className = "btn btn-danger btn-sm ms-2";
-                    deleteBtn.addEventListener("click", () => {
-                        fileContainer.removeChild(fileGroup);
-                        this.mergedschedule[index].details[detailIndex].files[fileIndex] = null; // 保留位置為 null
-                    });
-
-                    // 包裹 input 和按鈕的容器
-                    const fileGroup = document.createElement("div");
-                    fileGroup.className = "mb-2";
-                    fileGroup.appendChild(fileInput);
-                    fileGroup.appendChild(deleteBtn);
-
-                    fileContainer.appendChild(fileGroup);
-
-                    // 紀錄到 Vue 資料
-                    this.mergedschedule[index].details[detailIndex].files.push(null);
-                },
-                handleFileChange(event, index, detailIndex, fileIndex) {
-                    const file = event.target.files[0];
-                    if (file) {
-                        this.mergedschedule[index].details[detailIndex].files[fileIndex] = file;
-                        console.log(`檔案更新：`, file.name);
-                    }
-                },
-                // selectFile(event, index, detailIndex) {
-                //     const file = event.target.files[0];
-                //     this.selectedFile = event.target.files[0];
-                //     this.mergedschedule[index].details[detailIndex].file = file;
-                //     console.log(index, detailIndex)
-                // },
-                async uploadFile(index, detailIndex) {
-
-                    const file = this.mergedschedule[index].details[detailIndex].file;
-                    if (!file) {
-                        alert("請先選擇檔案");
+                    const titleInputId = 'schedule_title';
+                    const title = document.getElementById(titleInputId).value;
+                    document.getElementById(titleInputId).value = ''
+                    if (!title) {
+                        alert(`議程須有名稱`)
                         return;
                     }
 
-                    let formData = new FormData();
-                    formData.append("file", file);
+                    this.modaladdedschedule.push({
+                        title,
+                        details: [],
+                    });
+                },
+                deleteSchedule(scheduleIndex) {
+                    const schedule = this.numberedMergedSchedule[scheduleIndex];
+                    const isAddedSchedule = this.modaladdedschedule.some(item => item.title === schedule.title);
 
-                    try {
-                        let response = await fetch("/upload", { method: "POST", body: formData });
-                        let result = await response.json();
-
-                        if (response.ok) {
-                            console.log("上傳成功", result.file_url);
-                            console.log(this.mergedschedule)
-                        } else {
-                            alert(result.error || "上傳失敗");
+                    if (isAddedSchedule) {
+                        const deleteIndex = this.modaladdedschedule.findIndex(item => item.title === schedule.title);
+                        if (deleteIndex !== -1) {
+                            this.modaladdedschedule.splice(deleteIndex, 1);
                         }
-                    } catch (error) {
-                        console.error("上傳錯誤", error);
-                        alert("發生錯誤，請稍後再試");
                     }
+                    else {
+                        const deleteIndex = this.modalSchedule.findIndex(item => item.title === schedule.title);
+                        if (deleteIndex !== -1) {
+                            this.modalSchedule.splice(deleteIndex, 1);
+                        }
+                    }
+                },
+                handleNewFileChange(event, index, dIndex) {
+                    const file = event.target.files[0];
+
+                    const maxSize = 5 * 1024 * 1024; // 單檔最大 5MB
+                    if (file) {
+                        if (file.size > maxSize) {
+                            alert(`檔案 "${file.name}" 超過 5MB，請重新選擇。`);
+                            event.target.value = "";
+                            return
+                        }
+                        const detail = this.numberedMergedSchedule[index].details[dIndex];
+                        if (!detail.new_files) {
+                            this.$set(detail, 'new_files', []);
+                        }
+                        detail.new_files.push(file);
+                    }
+                },
+                deleteFile(index, dIndex, fileIndex, type) {
+                    const detail = this.numberedMergedSchedule[index].details[dIndex];
+                    if (type === 'old') {
+                        if (!("deleted_files" in detail)) {
+                            this.$set(detail, 'deleted_files', []);
+                        }
+                        const urlParts = (detail.file_urls[fileIndex] || '').split('/');
+                        detail.deleted_files.push(urlParts[urlParts.length - 1]);
+                        detail.file_urls.splice(fileIndex, 1);
+                        detail.file_names.splice(fileIndex, 1);
+                    } else if (type === 'new') {
+                        detail.new_files.splice(fileIndex, 1);
+                    }
+                },
+                getStructuredContentFromRefs() {
+                    const contentList = [];
+
+                    this.numberedMergedSchedule.forEach((schedule, scheduleIndex) => {
+                        const scheduleContent = {
+                            title: schedule.title,
+                            details: []
+                        };
+
+                        // 遍歷 detailTextarea-* 找對應的 detail
+                        schedule.details.forEach((detail, detailIndex) => {
+                            const refKey = `detailTextarea-${scheduleIndex}-${detailIndex}`;
+                            const contentEl = this.$refs[refKey];
+                            if (!contentEl) return;  // 沒新增細項
+
+                            const contentValue = (Array.isArray(contentEl) ? contentEl[0] : contentEl)?.value || '';
+                            if (!contentValue.trim()) {
+                                alert(`${schedule.title} 的第 ${detailIndex + 1} 筆細項內容為空，請填寫內容或刪除該細項。`);
+                                this.hasEmptyContent = true;
+                            }
+                            // 舊檔案（file_names + file_urls）
+                            const file_dict = (detail.file_names || []).map((name, i) => {
+                                const urlParts = (detail.file_urls?.[i] || '').split('/');
+                                return {
+                                    name,
+                                    url: urlParts[urlParts.length - 1]
+                                };
+                            });
+                            // 新上傳檔案
+                            const new_files = detail.new_files || [];
+                            const fileNames = new_files.map(file => file.name);
+                            const deleted_files = detail.deleted_files
+                            // 加進去 detail
+                            scheduleContent.details.push({
+                                content: contentValue,
+                                fileName: fileNames,
+                                files: new_files,
+                                file_dict,
+                                deleted_files
+
+                            });
+                        });
+                        contentList.push(scheduleContent);
+                    });
+                    return contentList;
+                },
+                formatDate(date) {
+                    let year = date.getUTCFullYear();
+                    let month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                    let day = String(date.getUTCDate()).padStart(2, '0');
+                    let hours = String(date.getUTCHours()).padStart(2, '0');
+                    let minutes = String(date.getUTCMinutes()).padStart(2, '0');
+                    return `${year}-${month}-${day}T${hours}:${minutes}`;
                 }
             },
-            mounted() {
-
-            }
         });
     </script>
     {% endraw %}
