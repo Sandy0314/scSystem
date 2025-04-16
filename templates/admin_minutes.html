@@ -27,7 +27,7 @@
                     <li><a href="/admin">會議通知</a></li>
                     <li><a href="/admin/minutes">會議記錄</a></li>
                     <li><a href="/admin/regulations">規章</a></li>
-                    <li><a href="/">登出</a></li>
+                    <li><a href="/logout">登出</a></li>
                 </ul>
             </nav>
         </header>
@@ -167,14 +167,18 @@
                 password: '',
                 errorMessage: '',
                 modalData: {},      // 模態框顯示的資料
-                // schedule: { "宣布開會": [], "確認議程": [], "主席報告": [], "報告事項": [], "討論事項": [], "臨時動議": [], "自由發言": [], "散會": [] },
+                // message: 'Welcome',
+                currentPath: window.location.pathname,
+
             },
             async created() {
                 // 在组件创建时获取后端数据
                 console.log('Vue instance created.');  // Debug log
                 await this.fetchBackendData();
 
-            }, computed: {
+
+            },
+            computed: {
                 numberedschedule() {
                     let before = this.schedule.findIndex(item => item.name === "討論事項");
                     this.beforeDiscussion = before - 1;
@@ -310,7 +314,7 @@
                         }
 
                         this.closeModal();
-                        // window.location.reload();
+                        window.location.reload();
                     } catch (error) {
                         console.error("上傳失敗：", error);
                     }

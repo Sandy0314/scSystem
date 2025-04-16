@@ -9,7 +9,7 @@
 /* 页面居中 */
 #app {
     /* align-items: center; */
-    height: 100vh;
+    min-height: 100vh;
     background: linear-gradient(135deg, rgb(221, 221, 221), rgb(221, 221, 221));
     font-family: Arial, sans-serif;
     padding: 20px;
@@ -113,7 +113,7 @@ h1 {
 .form-group {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 35px;
     /* label 和 input 之間的間距 */
 }
 
@@ -130,8 +130,10 @@ label {
 
 .input_text {
     text-align: left;
-
     font-weight: bold;
+    display: inline-block;
+    white-space: nowrap;
+    /* 不換行 */
     /* Extra Bold
     Black */
 }
@@ -165,8 +167,9 @@ label {
 
 .detail_btn {
     white-space: nowrap;
+    margin-left: 10px;
     /* 防止按鈕折行 */
-    padding: 2px 5px;
+    padding: 1.5px 4px;
     cursor: pointer;
     background-color: #637485;
     color: white;
@@ -176,6 +179,37 @@ label {
 
 .detail_btn:hover {
     background-color: #a9bed5;
+}
+
+.delete_btn {
+    white-space: nowrap;
+    /* 防止按鈕折行 */
+    padding: 1.5px 4px;
+    cursor: pointer;
+    background-color: #c71d1d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+.delete_btn:hover {
+    background-color: #ea4646;
+}
+
+.detail-wrapper {
+    margin-left: 10px;
+    background-color: #f8f9fa;
+    /* Bootstrap 的 bg-light 顏色 */
+    border: 1px solid #dee2e6;
+    /* 淡灰色邊框 */
+    border-radius: 0.5rem;
+    /* 圓角 */
+    padding: 0.5rem;
+    /* 內距 */
+    margin-bottom: 0.5rem;
+    /* 每筆細項之間的間距 */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    position: relative;
 }
 
 .schedule_btn {
@@ -191,6 +225,116 @@ label {
 
 .schedule_btn:hover {
     background-color: #0e355f;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    /* 半透明黑色背景 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    /* 確保最上層 */
+}
+
+.loading-box {
+    background-color: #fff;
+    padding: 20px 30px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.loading-text {
+    margin-left: 15px;
+    font-size: 1.2rem;
+    color: #333;
+}
+
+.uploading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    /* 半透明黑色背景 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    /* 確保最上層 */
+}
+
+.uploading-box {
+    background-color: #fff;
+    padding: 20px 30px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.uploading-text {
+    margin-left: 15px;
+    font-size: 1.2rem;
+    color: #333;
+}
+
+.custom-spinner {
+    color: #2b642d;
+    /* spinner 顏色 */
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 54px;
+    height: 28px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    background-color: #ccc;
+    border-radius: 34px;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transition: 0.4s;
+}
+
+.slider::before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.4s;
+}
+
+input:checked+.slider {
+    background-color: #4c7aaf;
+}
+
+input:checked+.slider::before {
+    transform: translateX(28px);
 }
 
 /* Header 样式 */
