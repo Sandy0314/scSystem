@@ -53,7 +53,7 @@
                         <div class="modal-header">
                             <h5 class="modal-title" id="itemModalLabel">
                                 <div class="form-group">
-                                    <label for="record_title" class="input_text">會議通知紀錄 :</label>
+                                    <label for="record_title" class="input_text">會議紀錄標題 :</label>
                                     <input id="record_title" type="text" class="form-control"
                                         placeholder="例：113-2學生代表大會第一次定期大會議程暨關係文書" aria-label="會議標題"
                                         aria-describedby="basic-addon1" v-model="modalTitle">
@@ -89,14 +89,16 @@
                             </div>
                             <div class="form-group">
                                 <label for="present_list" class="input_text">出席名單 :</label>
-                                <textarea id="present_list" class="form-control" placeholder="例：議長 王o明、副議長 王x明、......"
-                                    aria-label="出席名單" aria-describedby="basic-addon1" v-model="modalPresent"></textarea>
+                                <textarea id="present_list" class="form-control"
+                                    placeholder="例：本會各學生代表、......&#13;&#10; (稱謂和名字請以空白隔開，人物之間請以逗號分隔)" aria-label="出席名單"
+                                    aria-describedby="basic-addon1" v-model="modalPresent"></textarea>
                             </div>
                             <div class="form-group">
                                 <label for="attendance_list" class="input_text">列席名單 :</label>
                                 <textarea id="attendance_list" class="form-control"
-                                    placeholder="例：議長 王o明、副議長 王x明、......" aria-label="列席名單"
-                                    aria-describedby="basic-addon1" v-model="modalAttendance"></textarea>
+                                    placeholder="例：被提名人 王o明、被提名人 王x明、本會各秘書、......&#13; (稱謂和名字請以空白隔開，人物之間請以逗號分隔)"
+                                    aria-label="列席名單" aria-describedby="basic-addon1"
+                                    v-model="modalAttendance"></textarea>
                             </div>
                             <div class="input_text">議程</div>
                             <div v-for="(schedule, index) in numberedMergedSchedule" :key="index" class="mb-4">
@@ -163,12 +165,12 @@
                                     <input type="checkbox" v-model="is_visible" />
                                     <span class="slider"></span>
                                 </label>
-                                <span class="ms-2">{{ is_visible ? '上架中' : '未上架' }}</span>
+                                <span class="ms-2">{{ is_visible ? '上架' : '不上架' }}</span>
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary" @click="saveChange(userid)">儲存會議通知</button>
+                            <button type="button" class="btn btn-primary" @click="saveChange(userid)">儲存會議紀錄</button>
                             <div v-if="uploading" class="uploading-overlay">
                                 <div class="uploading-box">
                                     <div class="spinner-border custom-spinner" role="status"></div>
@@ -251,7 +253,7 @@
                             this.latest_session = this.session_list[0];
                         }
                     } catch (error) {
-                        alert(`無法正確取得資料，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
+                        alert(`無法正確取得紀錄資料，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
                     }
                 },
                 closeModal() {
@@ -390,13 +392,13 @@
                             }
                         }
                     } catch (error) {
-                        alert(`無法取得此筆資料，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
+                        alert(`無法取得此筆紀錄資料，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
                     } finally {
                         this.loading = false;
                     }
                 },
                 async saveChange(id) {
-                    console.log('儲存ID = ', id, '的通知')
+                    console.log('儲存ID = ', id, '的紀錄')
                     const title = document.getElementById("record_title").value.trim();
                     const session = document.getElementById("record_session").value.trim();
                     const date = document.getElementById("record_date").value.trim();
@@ -462,7 +464,7 @@
                             this.uploading = false;
                             window.location.reload();
                         } catch (error) {
-                            alert(`上傳/修改失敗，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
+                            alert(`上傳/修改紀錄失敗，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
                             this.uploading = false;
                         }
                     }

@@ -325,81 +325,82 @@ def getAllMeetTitleFromDB(Table):
         db.session.query(Table).order_by(Table.session.desc(), Table.date.desc()).all()
     )
     result = []
+    seen_sessions = set()
     session_list = []
     for table in tables:
-        tmpSession = number_to_chinese(table.session)
-        if tmpSession not in session_list:
-            session_list.append(tmpSession)
+        session_str = number_to_chinese(table.session)
+        if session_str not in seen_sessions:
+            seen_sessions.add(session_str)
+            session_list.append(session_str)
+
         result.append(
             {
                 "id": table.id,
                 "title": table.title,
-                "session": tmpSession,
+                "session": session_str,
             }
         )
     return result, session_list
 
 
+def serialize_schedule(schedule):
+    return {
+        "id": schedule.id,
+        "title": schedule.title,
+        "details": [serialize_detail(detail) for detail in schedule.details],
+    }
+
+
+def serialize_detail(detail):
+    file_url_base = f"https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/"
+    return {
+        "id": detail.id,
+        "content": detail.content,
+        "file_name": [f.original_filename for f in detail.files],
+        "file_urls": [file_url_base + f.filename_with_timestamp for f in detail.files],
+    }
+
+
 def getMeetContentFromDB(Table, id, is_record):
     table = db.session.query(Table).get(id)
-    if table:
-        result = []
-        tmpSession = number_to_chinese(table.session)
-        table_data = {
-            "id": table.id,
-            "title": table.title,
-            "session": tmpSession,
-            "place": table.place,
-            "date": table.date,
-            "person": table.person,
-            "shorthand": table.shorthand,
-            "attendance": table.attendance,
-            "present": table.present,
-            "is_visible": table.is_visible,
-        }
+    if not table:
+        return []
 
-        # 預先載入每個 schedule 的 details 和每個 detail 的 files
-        filter_kwargs = (
-            {"record_id": table.id} if is_record else {"notification_id": table.id}
-        )
+    result = []
+    table_data = {
+        "id": table.id,
+        "title": table.title,
+        "session": number_to_chinese(table.session),
+        "place": table.place,
+        "date": table.date,
+        "person": table.person,
+        "shorthand": table.shorthand,
+        "attendance": table.attendance,
+        "present": table.present,
+        "is_visible": table.is_visible,
+    }
 
-        schedules = (
-            Schedule.query.filter_by(**filter_kwargs)
-            .options(joinedload(Schedule.details).joinedload(Detail.files))
-            .all()
-        )
-        schedule_data = []
-        file_url_tmp = f"https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/"
-        for schedule in schedules:
-            detail_data = []
-            for detail in schedule.details:
-                file_name = []
-                file_url = []
+    # 預先載入每個 schedule 的 details 和每個 detail 的 files
+    filter_kwargs = (
+        {"record_id": table.id} if is_record else {"notification_id": table.id}
+    )
+    schedules = (
+        Schedule.query.filter_by(**filter_kwargs)
+        .options(joinedload(Schedule.details).joinedload(Detail.files))
+        .all()
+    )
 
-                for file in detail.files:
-                    file_name.append(file.original_filename)
-                    file_url.append(file_url_tmp + file.filename_with_timestamp)
+    table_data["schedules"] = [serialize_schedule(sched) for sched in schedules]
+    result.append(table_data)
+    return result
 
-                detail_data.append(
-                    {
-                        "id": detail.id,
-                        "content": detail.content,
-                        "file_name": file_name,
-                        "file_urls": file_url,
-                    }
-                )
-            schedule_data.append(
-                {
-                    "id": schedule.id,
-                    "title": schedule.title,
-                    "details": detail_data,
-                }
-            )
-        # 將整理好的 schedule_data 放進 data 裡
-        table_data["schedules"] = schedule_data
-        result.append(table_data)
-        return result
-    return []
+
+def parse_json_field(request, field_name):
+    try:
+        return json.loads(request.form.get(field_name, "{}"))
+    except json.JSONDecodeError:
+        print(f"JSON decode error for field: {field_name}")
+        return {}
 
 
 def getDataFromFrontend(request):
@@ -412,55 +413,45 @@ def getDataFromFrontend(request):
         "person": request.form.get("person"),
         "shorthand": request.form.get("shorthand"),
         "is_visible": True if is_visible == "true" else False,
+        "present": parse_json_field(request, "present"),
+        "attendance": parse_json_field(request, "attendance"),
     }
-
-    present_json = request.form.get("present")
-    attendance_json = request.form.get("attendance")
-    content_json = request.form.get("content")
-
-    present_dict = json.loads(present_json)
-    attendance_dict = json.loads(attendance_json)
-    content = json.loads(content_json)
-
-    data["present"] = present_dict
-    data["attendance"] = attendance_dict
 
     uploaded_files_info = {}
     # 上傳檔案
     for key in request.files:
-        upload_time = time.time()
         if key.startswith("newfile-"):
             file = request.files[key]
-            original_filename = file.filename
-            safe_filename = generate_unique_filename(original_filename)
-
-            s3.upload_fileobj(
-                file, S3_BUCKET, safe_filename, ExtraArgs={"ACL": "public-read"}
-            )
-            uploaded_files_info[original_filename] = {
-                "original": original_filename,
-                "safe": safe_filename,
+            original = file.filename
+            safe = generate_unique_filename(original)
+            upload_time = time.time()
+            s3.upload_fileobj(file, S3_BUCKET, safe, ExtraArgs={"ACL": "public-read"})
+            uploaded_files_info[original] = {
+                "original": original,
+                "safe": safe,
             }
-        print(original_filename, "上傳s3", time.time() - upload_time)
+        print(original, "上傳s3", time.time() - upload_time)
+
     deleted_files = []
+    content = content = parse_json_field(request, "content")
     # 填入 file_urls
     for schedule in content:
         for detail in schedule["details"]:
             if detail.get("deleted_files"):  # 假設使用 deleted_files 儲存被刪除的檔案
                 deleted_files += detail.get("deleted_files")
             detail["file_urls"] = []
-
+            # 處理舊檔案
             file_dict_urls = [
                 {"original": file["name"], "safe": file["url"]}
                 for file in detail.get("file_dict", [])
             ]
-            # 再處理 files
-            if "fileName" in detail:
-                for fname in detail["fileName"]:
-                    if fname in uploaded_files_info:
-                        detail["file_urls"].append(uploaded_files_info[fname])
-
-            detail["file_urls"] = file_dict_urls + detail["file_urls"]
+            # 來自本次上傳的新檔案
+            new_file_urls = [
+                uploaded_files_info[fname]
+                for fname in detail.get("fileName", [])
+                if fname in uploaded_files_info
+            ]
+            detail["file_urls"] = file_dict_urls + new_file_urls
     data["content"] = content
     return data, deleted_files
 
@@ -474,7 +465,6 @@ def addSchedule(content, id, is_record):
             "notification_id": None if is_record else id,
             "record_id": id if is_record else None,
         }
-        print(schedule_kwargs)
         schedule_obj = Schedule(**schedule_kwargs)
         db.session.add(schedule_obj)
         db.session.flush()
@@ -517,45 +507,38 @@ def addSchedule(content, id, is_record):
     )
 
 
+def delete_file_if_unused(file, deleted_files_set):
+    """
+    如果檔案只被一個 detail 使用，且在刪除清單中，就從 S3 與資料庫中刪除。
+    """
+    if len(file.details) == 1 and file.filename_with_timestamp in deleted_files_set:
+        try:
+            s3_time = time.time()
+            s3.delete_object(Bucket=S3_BUCKET, Key=file.filename_with_timestamp)
+            print("s3", file.filename_with_timestamp, time.time() - s3_time)
+        except Exception as e:
+            print("刪除 S3 失敗：", e)
+        db.session.delete(file)
+
+
 def deletSchedule(id, deleted_files, is_record):
     st_time = time.time()
     schedule_filter = (
         Schedule.record_id == id if is_record else Schedule.notification_id == id
     )
     old_schedules = Schedule.query.filter(schedule_filter).all()
+
     for sched in old_schedules:
         dele_time = time.time()
         if deleted_files:
             for detail in sched.details:
                 for file in detail.files:
-                    if (
-                        len(file.details) == 1
-                        and file.filename_with_timestamp in deleted_files
-                    ):
-                        try:
-                            s3_time = time.time()
-                            s3.delete_object(
-                                Bucket=S3_BUCKET, Key=file.filename_with_timestamp
-                            )
-                            print(
-                                "s3",
-                                file.filename_with_timestamp,
-                                time.time() - s3_time,
-                            )
-                        except Exception as e:
-                            print("刪除 S3 失敗：", e)
-                        db.session.delete(file)  # 刪掉資料庫中的 File 資料
+                    delete_file_if_unused(file, deleted_files)
             print("全部刪檔案", time.time() - dele_time)
         db.session.delete(sched)
     db.session.commit()
-    print(
-        "刪除議程內容, id = ",
-        id,
-        " 是否為紀錄: ",
-        is_record,
-        " 花費時間: ",
-        time.time() - st_time,
-    )
+
+    print("刪議程,id=", id, " 紀錄:", is_record, " 花費時間:", time.time() - st_time)
 
 
 # 設定如何載入使用者
@@ -664,7 +647,6 @@ def upload_record():
         record_id = request.form.get("id")
 
         is_new = record_id == "-1"
-
         if is_new:
             print("新增紀錄")
             record = Record(
@@ -678,7 +660,6 @@ def upload_record():
             if not record:
                 return {"error": "找不到紀錄資料"}, 404
             record.is_modify = True
-
         # 通用欄位填入
         for field in [
             "title",
@@ -692,19 +673,16 @@ def upload_record():
             "is_visible",
         ]:
             setattr(record, field, data[field])
-
         db.session.flush()
 
         if not is_new:
             deletSchedule(record.id, deleted_files, is_record=True)
 
         addSchedule(data["content"], record.id, is_record=True)
-
         db.session.commit()
         print("完成", time.time() - record_time)
 
         return admin_record_data()
-
     except Exception as e:
         db.session.rollback()
         print(str(e))
@@ -717,103 +695,74 @@ def upload_notifi():
         not_time = time.time()
         data, deleted_files = getDataFromFrontend(request)
 
-        id = request.form.get("id")
-        if id == "-1":
-            print("通知id = ", id, " 新增資料")
-            # 新增資料
-            new_notification = Notification(
-                title=data["title"],
-                session=data["session"],
-                date=data["date"],
-                place=data["place"],
-                person=data["person"],
-                shorthand=data["shorthand"],
-                present=data["present"],
-                attendance=data["attendance"],
-                is_visible=data["is_visible"],
-                user_id=current_user.id,
-            )
-            db.session.add(new_notification)
+        noti_id = request.form.get("id")
+        is_new = noti_id == "-1"
 
-            if data["is_visible"]:
-                new_record = Record(
-                    title=data["title"],
-                    session=data["session"],
-                    date=data["date"],
-                    place=data["place"],
-                    person=data["person"],
-                    shorthand=data["shorthand"],
-                    present=data["present"],
-                    attendance=data["attendance"],
+        # 建立或取得 Notification
+        if is_new:
+            print("新增通知")
+            notification = Notification(user_id=current_user.id)
+            db.session.add(notification)
+        else:
+            print(f"修改通知 id = {noti_id}")
+            notification = Notification.query.get(noti_id)
+            if not notification:
+                return {"error": "找不到通知資料"}, 404
+        # 通用欄位
+        for field in [
+            "title",
+            "session",
+            "date",
+            "place",
+            "person",
+            "shorthand",
+            "present",
+            "attendance",
+            "is_visible",
+        ]:
+            setattr(notification, field, data[field])
+        db.session.flush()
+
+        # 判斷是否要處理 Record（新增或同步更新）
+        if data["is_visible"]:
+            if is_new or not notification.record_id:
+                # 沒有綁定，新增一筆 record
+                record = Record(
+                    user_id=current_user.id,
                     is_visible=False,
                     is_modify=False,
-                    user_id=current_user.id,
                 )
-                db.session.add(new_record)
+                db.session.add(record)
                 db.session.flush()
-
-                new_notification.record_id = new_record.id
-                addSchedule(data["content"], new_record.id, 1)
-            addSchedule(data["content"], new_notification.id, 0)
-            db.session.commit()
-        else:
-            # 修改舊資料
-            print("修改通知id = ", id, " 修改舊資料")
-            existing_notification = Notification.query.get(id)
-            if not existing_notification:
-                return {"error": "找不到通知資料"}, 404
-
-            # 更新 Notification 欄位
-            existing_notification.title = data["title"]
-            existing_notification.session = data["session"]
-            existing_notification.date = data["date"]
-            existing_notification.place = data["place"]
-            existing_notification.person = data["person"]
-            existing_notification.shorthand = data["shorthand"]
-            existing_notification.present = data["present"]
-            existing_notification.attendance = data["attendance"]
-            existing_notification.is_visible = data["is_visible"]
-            record_id = existing_notification.record_id
-            db.session.flush()
-            if record_id:
-                existing_record = Record.query.get(record_id)
-                if not existing_record.is_modify:  # 此紀錄還沒被更改
-                    existing_record.title = data["title"]
-                    existing_record.session = data["session"]
-                    existing_record.date = data["date"]
-                    existing_record.place = data["place"]
-                    existing_record.person = data["person"]
-                    existing_record.shorthand = data["shorthand"]
-                    existing_record.present = data["present"]
-                    existing_record.attendance = data["attendance"]
-                    db.session.flush()
-
-                    deletSchedule(existing_record.id, deleted_files, 1)
-                    addSchedule(data["content"], existing_record.id, 1)
+                notification.record_id = record.id
             else:
-                if data["is_visible"]:
-                    # 沒綁過且要上架
-                    new_record = Record(
-                        title=data["title"],
-                        session=data["session"],
-                        date=data["date"],
-                        place=data["place"],
-                        person=data["person"],
-                        shorthand=data["shorthand"],
-                        present=data["present"],
-                        attendance=data["attendance"],
-                        is_visible=False,
-                        is_modify=False,
-                        user_id=current_user.id,
-                    )
-                    db.session.add(new_record)
+                # 如果 record 存在且尚未修改，同步更新內容
+                record = Record.query.get(notification.record_id)
+                if not record.is_modify:
                     db.session.flush()
-                    existing_notification.record_id = new_record.id
-                    addSchedule(data["content"], new_record.id, 1)
-            db.session.commit()
-            deletSchedule(existing_notification.id, deleted_files, 0)
-            # 重新建立新的 schedule 和 detail
-            addSchedule(data["content"], existing_notification.id, 0)
+            # 不論是新或更新，都補上欄位
+            if not record.is_modify:
+                for field in [
+                    "title",
+                    "session",
+                    "date",
+                    "place",
+                    "person",
+                    "shorthand",
+                    "present",
+                    "attendance",
+                ]:
+                    setattr(record, field, data[field])
+
+                deletSchedule(record.id, deleted_files, is_record=True)
+                addSchedule(data["content"], record.id, is_record=True)
+
+        # 清空並重建通知的 schedule
+        if not is_new:
+            deletSchedule(notification.id, deleted_files, is_record=False)
+        addSchedule(data["content"], notification.id, is_record=False)
+
+        db.session.commit()
         print("完成", time.time() - not_time)
         return admin_notifi_data()
     except Exception as e:
