@@ -11,6 +11,7 @@ from flask_login import (
     current_user,
 )
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import case
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import joinedload
 from dotenv import load_dotenv
@@ -188,6 +189,99 @@ class File(db.Model):
         return f"<File {self.original_filename}>"
 
 
+# 規章主表
+class Regulation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    category = db.Column(db.String(255))
+    description = db.Column(db.Text)
+    is_visible = db.Column(db.Boolean, default=True)
+
+    # 關聯章節與修訂紀錄
+    chapters = db.relationship(
+        "Chapter", backref="regulation", lazy=True, cascade="all, delete-orphan"
+    )
+    revisions = db.relationship(
+        "Revision", backref="regulation", lazy=True, cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<Regulation {self.title}>"
+
+
+# 修訂紀錄
+class Revision(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    regulation_id = db.Column(
+        db.Integer, db.ForeignKey("regulation.id"), nullable=False
+    )
+    modified_at = db.Column(db.DateTime, default=datetime.utcnow)
+    note = db.Column(db.Text)
+
+    def __repr__(self):
+        return f"<Revision {self.modified_at} - {self.note[:20]}>"
+
+
+# 章
+class Chapter(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    regulation_id = db.Column(
+        db.Integer, db.ForeignKey("regulation.id"), nullable=False
+    )
+    number = db.Column(db.Integer)  # 第幾章
+    title = db.Column(db.String(255))
+
+    articles = db.relationship(
+        "Article", backref="chapter", lazy=True, cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<Chapter 第{self.number}章 - {self.title}>"
+
+
+class Article(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chapter_id = db.Column(db.Integer, db.ForeignKey("chapter.id"), nullable=False)
+
+    title = db.Column(db.String(255), nullable=False)  # 條標題，如「第四條之一」
+    sort_index = db.Column(
+        db.Float, nullable=False
+    )  # 用於排序：可為 1.0、2.0、2.5、3.0
+
+    paragraphs = db.relationship(
+        "Paragraph", backref="article", lazy=True, cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<Article {self.title}>"
+
+
+# 項
+class Paragraph(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    article_id = db.Column(db.Integer, db.ForeignKey("article.id"), nullable=False)
+    number = db.Column(db.Integer)  # 第幾項
+    content = db.Column(db.Text)
+
+    clauses = db.relationship(
+        "Clause", backref="paragraph", lazy=True, cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<Paragraph 第{self.number}項>"
+
+
+# 款
+class Clause(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    paragraph_id = db.Column(db.Integer, db.ForeignKey("paragraph.id"), nullable=False)
+    number = db.Column(db.Integer)  # 第幾款
+    content = db.Column(db.Text)
+
+    def __repr__(self):
+        return f"<Clause 第{self.number}款>"
+
+
 # 創建資料庫表格
 # with app.app_context():
 #     db.create_all()
@@ -338,6 +432,7 @@ def getAllMeetTitleFromDB(Table):
                 "id": table.id,
                 "title": table.title,
                 "session": session_str,
+                "is_visible": table.is_visible,
             }
         )
     return result, session_list
@@ -527,7 +622,9 @@ def deletSchedule(id, deleted_files, is_record):
         Schedule.record_id == id if is_record else Schedule.notification_id == id
     )
     old_schedules = Schedule.query.filter(schedule_filter).all()
-
+    if not old_schedules:
+        print("刪議程,此id=", id, "沒有議程 紀錄:", is_record)
+        return
     for sched in old_schedules:
         dele_time = time.time()
         if deleted_files:
@@ -537,8 +634,101 @@ def deletSchedule(id, deleted_files, is_record):
             print("全部刪檔案", time.time() - dele_time)
         db.session.delete(sched)
     db.session.commit()
-
     print("刪議程,id=", id, " 紀錄:", is_record, " 花費時間:", time.time() - st_time)
+
+
+def getAllRegulationTitleFromDB(Table):
+    category_ordering = {
+        "憲制性法規篇": 1,
+        "綜合法規篇": 2,
+        "行政部門篇": 3,
+        "立法部門篇": 4,
+        "司法部門篇": 5,
+        "附錄篇": 6,
+    }
+
+    category_order = case(
+        *[(Table.category == name, order) for name, order in category_ordering.items()],
+        else_=100,
+    )
+    regulations = db.session.query(Table).order_by(category_order, Table.id.asc()).all()
+    result = [
+        {
+            "id": r.id,
+            "title": r.title,
+            "category": r.category,
+            "is_visible": r.is_visible,
+        }
+        for r in regulations
+    ]
+
+    return result, list(category_ordering.keys())
+
+
+def getRegulationContentFromDB(reg_id):
+    regulation = (
+        db.session.query(Regulation)
+        .options(
+            joinedload(Regulation.chapters)
+            .joinedload(Chapter.articles)
+            .joinedload(Article.paragraphs)
+            .joinedload(Paragraph.clauses),
+            joinedload(Regulation.revisions),
+        )
+        .filter(Regulation.id == reg_id)
+        .first()
+    )
+
+    if not regulation:
+        return None
+
+    return {
+        "id": regulation.id,
+        "title": regulation.title,
+        "category": regulation.category,
+        "is_visible": regulation.is_visible,
+        "description": regulation.description,
+        "chapters": [
+            {
+                "id": chapter.id,
+                "number": chapter.number,
+                "title": chapter.title,
+                "articles": [
+                    {
+                        "id": article.id,
+                        "number": article.number,
+                        "title": article.title,
+                        "paragraphs": [
+                            {
+                                "id": para.id,
+                                "number": para.number,
+                                "content": para.content,
+                                "clauses": [
+                                    {
+                                        "id": clause.id,
+                                        "number": clause.number,
+                                        "content": clause.content,
+                                    }
+                                    for clause in para.clauses
+                                ],
+                            }
+                            for para in article.paragraphs
+                        ],
+                    }
+                    for article in chapter.articles
+                ],
+            }
+            for chapter in regulation.chapters
+        ],
+        "revisions": [
+            {
+                "id": revision.id,
+                "modified_at": revision.modified_at,  # datetime to str
+                "note": revision.note,
+            }
+            for revision in regulation.revisions
+        ],
+    }
 
 
 # 設定如何載入使用者
@@ -591,6 +781,18 @@ def admin_notifi_page():
     return render_template("admin_notifi.html")
 
 
+@app.route("/admin/minutes")
+# @login_required  # 需要用戶登入才能訪問
+def admin_minutes_page():
+    return render_template("admin_minutes.html")
+
+
+@app.route("/admin/regulations")
+# @login_required  # 需要用戶登入才能訪問
+def admin_regulations_page():
+    return render_template("admin_regulations.html")
+
+
 @app.route("/admin/notifi/data")
 # @login_required  # 需要用戶登入才能訪問
 def admin_notifi_data():
@@ -608,6 +810,20 @@ def admin_record_data():
     try:
         result, session_list = getAllMeetTitleFromDB(Record)
         return jsonify({"records": result, "session_list": session_list}), 200
+    except Exception as e:
+        print("error", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/admin/regulations/data")
+# @login_required  # 需要用戶登入才能訪問
+def admin_regulations_data():
+    try:
+        result, category_list = getAllRegulationTitleFromDB(Regulation)
+        return (
+            jsonify({"regulations": result, "category_list": category_list}),
+            200,
+        )
     except Exception as e:
         print("error", str(e))
         return jsonify({"error": str(e)}), 500
@@ -639,62 +855,40 @@ def admin_record_getdetail(id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/newRecord", methods=["POST"])
-def upload_record():
+@app.route("/admin/regulations/data/<int:id>", methods=["GET"])
+# @login_required  # 需要用戶登入才能訪問
+def admin_regulations_getdetail(id):
     try:
-        record_time = time.time()
-        data, deleted_files = getDataFromFrontend(request)
-        record_id = request.form.get("id")
-
-        is_new = record_id == "-1"
-        if is_new:
-            print("新增紀錄")
-            record = Record(
-                user_id=current_user.id,
-                is_modify=True,
-            )
-            db.session.add(record)
-        else:
-            print(f"修改紀錄 id = {record_id}")
-            record = Record.query.get(record_id)
-            if not record:
-                return {"error": "找不到紀錄資料"}, 404
-            record.is_modify = True
-        # 通用欄位填入
-        for field in [
-            "title",
-            "session",
-            "date",
-            "place",
-            "person",
-            "shorthand",
-            "present",
-            "attendance",
-            "is_visible",
-        ]:
-            setattr(record, field, data[field])
-        db.session.flush()
-
-        if not is_new:
-            deletSchedule(record.id, deleted_files, is_record=True)
-
-        addSchedule(data["content"], record.id, is_record=True)
-        db.session.commit()
-        print("完成", time.time() - record_time)
-
-        return admin_record_data()
+        result = getRegulationContentFromDB(id)
+        print(result)
+        # 顯示章條項款
+        for chapter in result["chapters"]:
+            print(f"第 {chapter['number']} 章：{chapter['title']}")
+            for article in chapter["articles"]:
+                print(f"  第 {article['number']} 條：{article['title']}")
+                for para in article["paragraphs"]:
+                    print(f"    第 {para['number']} 項：{para['content']}")
+                    for sub in para["clauses"]:
+                        print(f"      第 {sub['number']} 款：{sub['content']}")
+        # 顯示修訂紀錄
+        print("\n修訂紀錄：")
+        for rev in result["revisions"]:
+            print(f"  {rev['modified_at']} - {rev['note']}")
+        if result:
+            return jsonify({"regulations": result}), 200
+        return jsonify({"error": "找不到此通知"}), 404
     except Exception as e:
-        db.session.rollback()
-        print(str(e))
+        print("error", str(e))
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/newNotification", methods=["POST"])
+@app.route("/admin/notifi/upload", methods=["POST"])
 def upload_notifi():
     try:
         not_time = time.time()
         data, deleted_files = getDataFromFrontend(request)
 
+        record = None
         noti_id = request.form.get("id")
         is_new = noti_id == "-1"
 
@@ -733,13 +927,18 @@ def upload_notifi():
                     is_modify=False,
                 )
                 db.session.add(record)
-                db.session.flush()
-                notification.record_id = record.id
             else:
                 # 如果 record 存在且尚未修改，同步更新內容
                 record = Record.query.get(notification.record_id)
-                if not record.is_modify:
-                    db.session.flush()
+                if not record:
+                    print(
+                        f"Warning: record_id {notification.record_id} 找不到，將自動新增 Record。"
+                    )  # 若原本綁定的 record 被刪了，就補建一筆新的
+                    record = Record(
+                        user_id=current_user.id,
+                        is_visible=False,
+                        is_modify=False,
+                    )
             # 不論是新或更新，都補上欄位
             if not record.is_modify:
                 for field in [
@@ -753,9 +952,11 @@ def upload_notifi():
                     "attendance",
                 ]:
                     setattr(record, field, data[field])
-
+                db.session.flush()
                 deletSchedule(record.id, deleted_files, is_record=True)
                 addSchedule(data["content"], record.id, is_record=True)
+
+            notification.record_id = record.id
 
         # 清空並重建通知的 schedule
         if not is_new:
@@ -771,17 +972,105 @@ def upload_notifi():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/minutes")
-# @login_required  # 需要用戶登入才能訪問
-def admin_minutes_page():
-    return render_template("admin_minutes.html")
+@app.route("/admin/minutes/upload", methods=["POST"])
+def upload_record():
+    try:
+        record_time = time.time()
+        data, deleted_files = getDataFromFrontend(request)
+        record_id = request.form.get("id")
+
+        is_new = record_id == "-1"
+        if is_new:
+            print("新增紀錄")
+            record = Record(
+                user_id=current_user.id,
+                is_modify=True,
+            )
+            db.session.add(record)
+        else:
+            print(f"修改紀錄 id = {record_id}")
+            record = Record.query.get(record_id)
+            if not record:
+                return {"error": "找不到紀錄資料"}, 404
+            record.is_modify = True
+        # 通用欄位填入
+        for field in [
+            "title",
+            "session",
+            "date",
+            "place",
+            "person",
+            "shorthand",
+            "present",
+            "attendance",
+            "is_visible",
+        ]:
+
+            setattr(record, field, data[field])
+        db.session.flush()
+
+        if not is_new:
+            deletSchedule(record.id, deleted_files, is_record=True)
+
+        addSchedule(data["content"], record.id, is_record=True)
+        db.session.commit()
+        print("完成", time.time() - record_time)
+
+        return admin_record_data()
+    except Exception as e:
+        db.session.rollback()
+        print(str(e))
+        return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/regulations")
-# @login_required  # 需要用戶登入才能訪問
-def admin_regulations_page():
+@app.route("/admin/regulations/upload", methods=["POST"])
+def upload_regulation():
+    try:
+        record_time = time.time()
+        data, deleted_files = getDataFromFrontend(request)
+        record_id = request.form.get("id")
 
-    return render_template("admin_regulations.html")
+        is_new = record_id == "-1"
+        if is_new:
+            print("新增紀錄")
+            record = Record(
+                user_id=current_user.id,
+                is_modify=True,
+            )
+            db.session.add(record)
+        else:
+            print(f"修改紀錄 id = {record_id}")
+            record = Record.query.get(record_id)
+            if not record:
+                return {"error": "找不到紀錄資料"}, 404
+            record.is_modify = True
+        # 通用欄位填入
+        for field in [
+            "title",
+            "category",
+            "date",
+            "place",
+            "person",
+            "shorthand",
+            "present",
+            "attendance",
+            "is_visible",
+        ]:
+            setattr(record, field, data[field])
+        db.session.flush()
+
+        if not is_new:
+            deletSchedule(record.id, deleted_files, is_record=True)
+
+        addSchedule(data["content"], record.id, is_record=True)
+        db.session.commit()
+        print("完成", time.time() - record_time)
+
+        return admin_record_data()
+    except Exception as e:
+        db.session.rollback()
+        print(str(e))
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/admin/article/<int:article_id>", methods=["GET", "POST"])
