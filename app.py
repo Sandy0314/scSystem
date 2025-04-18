@@ -696,8 +696,9 @@ def getRegulationContentFromDB(reg_id):
                 "articles": [
                     {
                         "id": article.id,
-                        "number": article.number,
+                        # "number": article.number,
                         "title": article.title,
+                        "sort_index": article.sort_index,
                         "paragraphs": [
                             {
                                 "id": para.id,
@@ -715,7 +716,9 @@ def getRegulationContentFromDB(reg_id):
                             for para in article.paragraphs
                         ],
                     }
-                    for article in chapter.articles
+                    for article in sorted(
+                        chapter.articles, key=lambda x: float(x.sort_index)
+                    )  # 排序
                 ],
             }
             for chapter in regulation.chapters
@@ -865,7 +868,7 @@ def admin_regulations_getdetail(id):
         for chapter in result["chapters"]:
             print(f"第 {chapter['number']} 章：{chapter['title']}")
             for article in chapter["articles"]:
-                print(f"  第 {article['number']} 條：{article['title']}")
+                print(f"  第 {article['sort_index']} 條：{article['title']}")
                 for para in article["paragraphs"]:
                     print(f"    第 {para['number']} 項：{para['content']}")
                     for sub in para["clauses"]:

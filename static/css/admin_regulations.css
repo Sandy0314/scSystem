@@ -74,6 +74,72 @@ h1 {
     /* 避免滾動條與底部重疊 */
 }
 
+.revisions-wrapper {
+    margin-left: 0px;
+    background-color: #f8f9fa;
+    /* Bootstrap 的 bg-light 顏色 */
+    border: 1px solid #dee2e6;
+    /* 淡灰色邊框 */
+    border-radius: 0.5rem;
+    /* 圓角 */
+    padding: 0.2rem;
+    /* 內距 */
+    margin-bottom: 3px;
+    /* 每筆細項之間的間距 */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    position: relative;
+}
+
+.revision-wrapper {
+    margin-left: 0.1px;
+    margin-right: 0.1px;
+    background-color: #d0d8df;
+    border: 1px solid #d0d8df;
+    border-radius: 0.5rem;
+    padding-bottom: 0.3rem;
+    padding-top: 0.3rem;
+    margin-bottom: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    position: relative;
+}
+
+.field-group {
+    gap: 0px;
+    min-width: 0;
+    /* 控制元素間距 */
+}
+
+.revision-label {
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 1px;
+    margin-right: -1.8rem;
+    /* 讓 label 和 input 之間有少許間距 */
+}
+
+.date-input,
+.note-input {
+    min-width: 0;
+    flex-grow: 1;
+    /* 確保 input 不會過寬，保持一致的間距 */
+    height: 40px;
+    /* 明確設定高度，使兩者一致 */
+}
+
+.revision_btn {
+    white-space: nowrap;
+    margin-left: 10px;
+    /* 防止按鈕折行 */
+    padding: 1.5px 4px;
+    cursor: pointer;
+    background-color: #637485;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
 /* Modal Styles */
 .modal {
     display: none;
@@ -107,12 +173,12 @@ h1 {
 .form-group {
     display: flex;
     align-items: center;
-    gap: 35px;
+    gap: 25px;
     /* label 和 input 之間的間距 */
 }
 
 label {
-    width: 100px;
+    width: 75px;
     /* 固定 label 寬度，讓輸入框對齊 */
     text-align: right;
 }
@@ -178,23 +244,19 @@ label {
     background-color: #ea4646;
 }
 
-.detail-wrapper {
+.article-wrapper {
     margin-left: 10px;
-    background-color: #f8f9fa;
-    /* Bootstrap 的 bg-light 顏色 */
-    border: 1px solid #dee2e6;
-    /* 淡灰色邊框 */
-    border-radius: 0.5rem;
-    /* 圓角 */
-    padding: 0.5rem;
+    background-color: #61a6ec;
     /* 內距 */
     margin-bottom: 0.5rem;
+    margin-top: 5rem;
     /* 每筆細項之間的間距 */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     position: relative;
+
+
 }
 
-.schedule_btn {
+.chapter_btn {
     white-space: nowrap;
     /* 防止按鈕折行 */
     padding: 2px 5px;
@@ -205,7 +267,7 @@ label {
     border-radius: 5px;
 }
 
-.schedule_btn:hover {
+.chapter_btn:hover {
     background-color: #0e355f;
 }
 

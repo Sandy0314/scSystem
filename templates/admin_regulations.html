@@ -51,7 +51,7 @@
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title" id="itemModalLabel">
+                            <h5 class="modal-title w-100" id="itemModalLabel">
                                 <div class="form-group">
                                     <label for="title" class="input_text">規章標題 :</label>
                                     <input id="title" type="text" class="form-control" placeholder="例：國立臺灣大學學生權利大憲章"
@@ -64,77 +64,118 @@
                             <div class="form-group">
                                 <label for="category" class="input_text">分類 :</label>
                                 <input id="category" type="text" class="form-control" placeholder="例：憲制性法規篇"
-                                    aria-label="屆數" aria-describedby="basic-addon1" v-model="modalCategory">
+                                    aria-label="分類" aria-describedby="basic-addon1" v-model="modalCategory">
                             </div>
-                            <!-- <div class="form-group">
-                                <label for="date" class="input_text">會議日期 :</label>
-                                <input id="date" type="datetime-local" class="form-control" aria-label="會議日期"
-                                    aria-describedby="basic-addon1" v-model="modalDate">
-                            </div> -->
+                            <div class="input_text">修訂版本 :</div>
+                            <div class="revisions-wrapper">
+                                <div v-for="(record, Index) in revisionRecords" :key="Index"
+                                    class="row revision-wrapper">
+                                    <div class="col-12 col-md-5">
+                                        <div class="d-flex align-items-center justify-content-start field-group">
+                                            <label class="form-label revision-label mb-1 mb-md-0">日期 :</label>
+                                            <input type="date" class="form-control date-input" v-model="record.date"
+                                                :ref="`revisionDate-${Index}`">
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-md-7">
+                                        <div class="d-flex align-items-center justify-content-start field-group">
+                                            <label class="form-label revision-label mb-1 mb-md-0">說明 :</label>
+                                            <input type="text" class="form-control note-input" v-model="record.note"
+                                                :ref="`revisionNote-${Index}`" placeholder="學生代表大會增訂公布第九條第一項第八款條文" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="agenda-item">
+                                    <button class="btn revision_btn" @click="addRevision()">新增版本</button>
+                                    <div v-if="revisionRecords.length > 0">
+                                        <button class="btn delete_btn" @click="deleteRevision()">
+                                            刪除版本
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="form-group">
-                                <label for="place" class="input_text">規章說明 :</label>
-                                <input id="place" type="text" class="form-control"
+                                <label for="description" class="input_text">規章說明 :</label>
+                                <textarea id="description" class="form-control"
                                     placeholder="我們相信,民主是普世共通的價值,在學術場域中亦須有所體現。大學在憲法與法.." aria-label="規章說明"
-                                    aria-describedby="basic-addon1" v-model="modalDescription">
+                                    aria-describedby="basic-addon1" v-model="modalDescription"></textarea>
                             </div>
 
-                            <div class="input_text">議程</div>
-                            <div v-for="(schedule, index) in numberedMergedSchedule" :key="index" class="mb-4">
-                                <div v-if="index === modalbeforeDiscussion">
-                                    <div class="agenda-item">
-                                        <button type="button" class="schedule_btn" @click="add_schedule()">新增議程</button>
-                                        <input id="schedule_title" type="text" class="form-control"
-                                            placeholder="新增之議程標題 e.g. 人事同意案" aria-label="新增之議程標題">
-                                    </div>
-                                    <br>
-                                </div>
-                                <!-- 議程標題 -->
+                            <div class="input_text">內容</div>
+                            <div v-for="(chapter, index) in modalChapters" :key="index" class="mb-4">
+                                <!-- 章節標題 -->
                                 <div class="agenda-item">
-                                    <div class="normal_text">{{ schedule.number }}、{{ schedule.title }}</div>
-                                    <div v-if="!isTitleRestricted(schedule.title)">
-                                        <button class="btn delete_btn" @click="deleteSchedule(index)">刪除議程</button>
+                                    <div class="input_text">第{{ chapter.number }}章 </div>
+                                    <input id="chapter_title" type="text" class="form-control" placeholder="此章節標題"
+                                        aria-label="章節標題" aria-describedby="basic-addon1" v-model="chapter.title"
+                                        :ref="`chapterTitle-${index}`">
+                                    <div v-if="index">
+                                        <button class="btn delete_btn" @click="deleteChapter(index)">刪除章節</button>
+                                    </div>
+                                    <div v-if="chapter.articles.length===0">
+                                        <button class="btn detail_btn" @click="addArticle(index,-1)">新增一條</button>
                                     </div>
                                 </div>
                                 <!-- 細項列表 -->
-                                <div v-for="(detail, dIndex) in schedule.details" :key="dIndex" class="detail-wrapper">
-                                    <textarea class="form-control mb-2" v-model="detail.content"
-                                        :ref="`detailTextarea-${index}-${dIndex}`" placeholder="請輸入內容">
-                                              </textarea>
-                                    <!-- 舊有檔案列表 -->
-                                    <div v-if="detail.file_urls && detail.file_urls.length" class="mb-2"
-                                        :ref="`oldFiles-${index}-${dIndex}`">
-                                        <div class="fw-bold text-start">原始檔案：</div>
-                                        <div v-for="(url, fIndex) in detail.file_urls" :key="'old-' + fIndex"
-                                            class="d-flex align-items-center mb-1">
-                                            <a :href="url" target="_blank" class="me-2">{{
-                                                detail.file_names[fIndex] }}</a>
-                                            <button class="btn btn-danger btn-sm delete_btn"
-                                                @click="deleteFile(index, dIndex, fIndex, 'old')">刪除檔案</button>
-                                        </div>
-                                    </div>
-                                    <!-- 新增檔案列表 -->
-                                    <div v-if="detail.new_files && detail.new_files.length" class="mb-2"
-                                        :ref="`newFiles-${index}-${dIndex}`">
-                                        <div class="fw-bold text-start">新增檔案：</div>
-                                        <div v-for="(file, nfIndex) in detail.new_files" :key="'new-' + nfIndex"
-                                            class="d-flex align-items-center mb-1">
-                                            <span class="me-2">{{ file.name }}</span>
-                                            <button class="btn btn-danger btn-sm delete_btn"
-                                                @click="deleteFile(index, dIndex, nfIndex, 'new')">刪除檔案</button>
-                                        </div>
-                                    </div>
-                                    <!-- 檔案上傳 input -->
-                                    <input type="file" @change="handleNewFileChange($event, index, dIndex)"
-                                        class="form-control mt-2">
+                                <div v-for="(article, aIndex) in chapter.articles" :key="aIndex" class="ms-3 mt-1">
+                                    <div class="agenda-item">
+                                        <div class="input_text">第{{ article.converted }} </div>
+                                        <input id="article_title" type="text" class="form-control" placeholder="此條標題"
+                                            aria-label="條標題" aria-describedby="basic-addon1" v-model="article.title"
+                                            :ref="`articleTitle-${index}-${aIndex}`">
+                                        <button class="btn detail_btn" @click="addRevision(index)">新增一項</button>
 
+                                        <div v-if="article.lastVersion">
+                                            <button class="btn detail_btn"
+                                                @click="addArticle(index,aIndex)">新增一條</button>
+                                        </div>
+                                        <div v-if="userid === -1">
+                                            <button class="btn delete_btn" @click="deleteChapter(aIndex)">刪除此條</button>
+                                        </div>
+                                    </div>
+
+                                    <div v-for="(paragraph,pInex) in article.paragraphs" :key="pInex" class="ms-5 mt-1">
+                                        <div class="agenda-item">
+                                            {{pInex+1}}
+                                            <textarea class="form-control mb-2" v-model="paragraph.content"
+                                                :ref="`paragraphTextarea-${index}-${aIndex}`" placeholder="此項內容">
+                                              </textarea>
+                                            <button class="btn detail_btn" @click="addRevision(index)">新增一款</button>
+
+                                            <!-- <div v-if="pInex === article.paragraphs.length-1">
+                                                <button class="btn detail_btn" @click="addRevision(index)">新增一項</button>
+                                            </div> -->
+
+                                        </div>
+                                        <div v-for="(clause,cInex) in paragraph.clauses" :key="cInex" class="ms-3 mt-1">
+                                            <div class="agenda-item">{{clause.number}}、
+                                                <textarea class="form-control mb-2" v-model="clause.content"
+                                                    :ref="`clauseTextarea-${index}-${aIndex}`" placeholder="此款內容">
+                                              </textarea>
+                                                <!-- <div v-if="cInex === paragraph.clauses.length-1">
+                                                    <button class="btn detail_btn"
+                                                        @click="addRevision(index)">新增一款</button>
+
+                                                </div> -->
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="agenda-item">
-                                    <button class="btn detail_btn" @click="add_detail(index)">新增細項</button>
-                                    <div v-if="schedule.details.length > 0">
-                                        <button class="btn delete_btn" @click="deleteDetail(index)">
+                                <!-- <div class="agenda-item">
+                                    <button class="btn detail_btn" @click="addRevision(index)">新增細項</button>
+                                    <div v-if="chapter.articles.length > 0">
+                                        <button class="btn delete_btn" @click="deleteRevision(index)">
                                             刪除細項
                                         </button>
                                     </div>
+                                </div> -->
+                                <div v-if="index === modalChapters.length-1">
+                                    <div class="agenda-item">
+                                        <button type="button" class="chapter_btn" @click="addChapters()">新增章節</button>
+                                        <!-- <input id="add_chapter_title" type="text" class="form-control"
+                                            placeholder="新增之章節標題 e.g. 校務之參與" aria-label="新增之章節標題"> -->
+                                    </div>
+                                    <br>
                                 </div>
                             </div>
                             <div class="agenda-item mb-3 d-flex align-items-center">
@@ -184,12 +225,13 @@
                 modalDescription: '',
                 modalPerson: '',
                 modalShorthand: '',
-                modalDate: '',
+                revisionRecords: [],
                 modalPresent: '',
                 modalAttendance: '',
-                modalSchedule: [],// 原始資料
-                modalDetails: '',
-                modaladdedschedule: [],
+                modalChapters: [],// 原始資料
+                modalArticles: '',
+                articleLast: [],
+                modalAddChapter: [],
                 userid: 0,
                 is_visible: true,
                 hasEmptyContent: false
@@ -198,20 +240,20 @@
                 await this.fetchBackendData();
             },
             computed: {
-                modalbeforeDiscussion() {
-                    return this.modalSchedule.findIndex(item => item.title === "報告事項") + 1;
-                },
-                numberedMergedSchedule() {
-                    const before = this.modalSchedule.findIndex(item => item.title === "討論事項");
+                // modalbeforeDiscussion() {
+                //     return this.modalChapters.finaIndex(item => item.title === "報告事項") + 1;
+                // },
+                numberedChapter() {
+                    const before = this.modalChapters.length;
                     const merged = [
-                        ...this.modalSchedule.slice(0, before),
-                        ...this.modaladdedschedule,
-                        ...this.modalSchedule.slice(before)
+                        ...this.modalChapters.slice(0, before),
+                        ...this.modalAddChapter,
+                        // ...this.modalChapters.slice(before)
                     ];
                     return merged.map((item, index) => ({
                         ...item,
                         number: this.chineseNumbers[index],
-                        details: item.details || [],
+                        articles: item.articles || [],
                     }));
                 }
             },
@@ -280,27 +322,22 @@
                     const modalEl = document.getElementById("itemModal");
                     this.userid = itemID
                     console.log('userid', this.userid)
-                    this.modaladdedschedule = []; //  清空新增議程（避免堆疊）
+                    this.modalAddChapter = []; //  清空新增議程（避免堆疊）
                     this.modalTitle = ""
                     this.modalCategory = this.latest_category
                     this.modalDescription = ""
+                    this.revisionRecords = []
+                    this.is_visible = true
+
                     this.modalPerson = ""
                     this.modalShorthand = ""
-                    this.modalDate = ""
                     this.modalPresent = ""
                     this.modalAttendance = ""
-                    this.is_visible = true
-                    this.modalSchedule = [
-                        { title: "宣布開會", details: [] },
-                        { title: "確認議程", details: [] },
-                        { title: "主席報告", details: [] },
-                        { title: "報告事項", details: [] },
-                        { title: "討論事項", details: [] },
-                        { title: "臨時動議", details: [] },
-                        { title: "自由發言", details: [] },
-                        { title: "散會", details: [] },
+
+                    this.modalChapters = [
+                        { number: '一', title: "標題第一章", articles: [] },
                     ]
-                    this.modalDetails = ''
+                    this.modalArticles = ''
 
                     if (!(itemID === -1)) {
                         await this.getdetail(itemID);
@@ -313,7 +350,7 @@
                 async getdetail(itemID) {
                     this.loading = true;
                     this.modalCategory = ""
-                    this.modalSchedule = []
+                    this.modalChapters = []
                     try {
                         const response = await axios.get(`/admin/regulations/data/${itemID}`);
                         if (response.data) {
@@ -322,30 +359,70 @@
                             this.modalTitle = tmp.title
                             this.modalCategory = tmp.category
                             this.modalDescription = tmp.description
-                            // this.modalDate = this.formatDate(new Date(tmp.date))
                             this.is_visible = tmp.is_visible
+                            let revisions = tmp.revisions
+                            for (let vision in revisions) {
+                                this.revisionRecords.push({
+                                    date: this.formatDate(new Date(revisions[vision].modified_at)),
+                                    note: revisions[vision].note
+                                })
+                            }
+                            let chapters = tmp.chapters
+                            chapters.sort((a, b) => a.number - b.number);
 
-                            // let schedules = tmp.schedules
-                            // schedules.sort((a, b) => a.id - b.id);
+                            for (let idx in chapters) {
+                                console.log(chapters[idx].title)
+                                let articles = chapters[idx].articles
+                                let article = []
+                                articles.sort((a, b) => a.sort_index - b.sort_index);
+                                let sort_index = []
+                                for (let aIndex in articles) {
+                                    sort_index.push(articles[aIndex].sort_index)
+                                }
 
-                            // for (let idx in schedules) {
-                            //     let details = schedules[idx].details
-                            //     let detail = []
-                            //     details.sort((a, b) => a.id - b.id);
-                            //     for (let dIndex in details) {
-                            //         detail.push({
-                            //             content: details[dIndex].content,
-                            //             files: [],
-                            //             file_urls: details[dIndex].file_urls || [],
-                            //             file_names: details[dIndex].file_name || [],
-                            //         }
-                            //         )
-                            //     }
-                            //     this.modalSchedule.push({
-                            //         title: schedules[idx].title,
-                            //         details: detail
-                            //     });
-                            // }
+                                let convertedList = this.convertArticles(sort_index)
+                                for (let aIndex in articles) {
+                                    let paragraphs = articles[aIndex].paragraphs
+                                    let paragraph = []
+                                    for (let pIndex in paragraphs) {
+                                        // console.log(paragraphs[pIndex].content)
+                                        let clauses = paragraphs[pIndex].clauses
+                                        let clause = []
+
+                                        for (let cIndex in clauses) {
+                                            // console.log(clauses[cIndex].content)
+                                            clause.push({
+                                                id: clauses[cIndex].id,
+                                                number: this.chineseNumbers[clause.length],
+                                                content: clauses[cIndex].content,
+                                            }
+                                            )
+                                        }
+                                        paragraph.push({
+                                            id: paragraphs[pIndex].id,
+                                            number: paragraphs[pIndex].number,
+                                            content: paragraphs[pIndex].content,
+                                            clauses: clause,
+                                        }
+                                        )
+                                    }
+
+                                    article.push({
+                                        id: articles[aIndex].id,
+                                        title: articles[aIndex].title,
+                                        sort_index: articles[aIndex].sort_index,
+                                        converted: convertedList[aIndex].converted,
+                                        lastVersion: convertedList[aIndex].lastVersions,
+                                        paragraphs: paragraph,
+                                    }
+                                    )
+                                }
+                                this.modalChapters.push({
+                                    number: this.chineseNumbers[this.modalChapters.length],  // 使用長度來直接獲取對應的數字
+                                    title: chapters[idx].title,
+                                    articles: article
+                                });
+                            }
                         }
                     } catch (error) {
                         alert(`無法取得此筆規章資料，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
@@ -426,8 +503,17 @@
                     }
                     this.hasEmptyContent = false
                 },
-                add_detail(index) {
-                    const target = this.numberedMergedSchedule;
+                addRevision() {
+                    this.revisionRecords.push({
+                        date: ``,
+                        note: ``
+                    })
+                },
+                deleteRevision() {
+                    this.revisionRecords.splice(-1, 1);
+                },
+                addDetail(index) {
+                    const target = this.numberedChapter;
                     target[index].details.push({
                         content: '',
                         file_urls: [],
@@ -437,7 +523,7 @@
                 },
                 deleteDetail(scheduleIndex) {
                     // 確保細項存在
-                    const schedule = this.numberedMergedSchedule[scheduleIndex];
+                    const schedule = this.numberedChapter[scheduleIndex];
                     if (schedule && schedule.details && schedule.details.length > 0) {
                         const detailIndex = schedule.details.length - 1
                         const detail = schedule.details[detailIndex];
@@ -454,67 +540,90 @@
                         schedule.details.splice(detailIndex, 1);
                     }
                 },
-                add_schedule() {
-                    const titleInputId = 'schedule_title';
-                    const title = document.getElementById(titleInputId).value;
-                    document.getElementById(titleInputId).value = ''
-                    if (!title) {
-                        alert(`議程須有名稱`)
-                        return;
-                    }
-
-                    this.modaladdedschedule.push({
-                        title,
-                        details: [],
-                    });
+                addChapters() {
+                    this.modalChapters.push({
+                        number: this.chineseNumbers[this.modalChapters.length],  // 使用長度來直接獲取對應的數字
+                        title: "",
+                        articles: []
+                    })
                 },
-                deleteSchedule(scheduleIndex) {
-                    const schedule = this.numberedMergedSchedule[scheduleIndex];
-                    const isAddedSchedule = this.modaladdedschedule.some(item => item.title === schedule.title);
-
-                    if (isAddedSchedule) {
-                        const deleteIndex = this.modaladdedschedule.findIndex(item => item.title === schedule.title);
-                        if (deleteIndex !== -1) {
-                            this.modaladdedschedule.splice(deleteIndex, 1);
-                        }
-                    }
-                    else {
-                        const deleteIndex = this.modalSchedule.findIndex(item => item.title === schedule.title);
-                        if (deleteIndex !== -1) {
-                            this.modalSchedule.splice(deleteIndex, 1);
-                        }
-                    }
+                deleteChapter(chapterIndex) {
+                    this.modalChapters.splice(chapterIndex, 1);
                 },
-                handleNewFileChange(event, index, dIndex) {
-                    const file = event.target.files[0];
+                addArticle(index, aIndex) {
+                    console.log(index, aIndex)
+                    if (aIndex === -1) {
+                        let articles = this.modalChapters[index].articles;
+                        let prevArticles = this.modalChapters[index - 1].articles
+                        let prevArticleLast = prevArticles[prevArticles.length - 1]
+                        let newSortIndex = prevArticleLast.sort_index + 1
+                        let newConverted = `${this.numberToChinese(newSortIndex)}條`;
 
-                    const maxSize = 5 * 1024 * 1024; // 單檔最大 5MB
-                    if (file) {
-                        if (file.size > maxSize) {
-                            alert(`檔案 "${file.name}" 超過 5MB，請重新選擇。`);
-                            event.target.value = "";
+                        articles.push({
+                            lastVersion: 1,
+                            sort_index: newSortIndex,
+                            converted: newConverted,
+                            title: '',
+                            paragraphs: []
+                        })
+                        return
+                    }
+                    let articles = this.modalChapters[index].articles;
+                    let currentArticle = articles[aIndex];
+                    let currentSort_index = currentArticle.sort_index
+                    let newConverted = '';
+
+                    if (articles.length === aIndex + 1) {
+                        if (this.modalChapters.length === index + 1) {
+                            newSortIndex = (Math.floor(currentSort_index) + 1)
+                            // const str = this.numberToChinese(newSortIndex)
+
+                            newConverted = `${this.numberToChinese(newSortIndex)}條`;
+                            articles.push({
+                                lastVersion: 1,
+                                sort_index: newSortIndex,
+                                converted: newConverted,
+                                title: '',
+                                paragraphs: []
+                            });
                             return
                         }
-                        const detail = this.numberedMergedSchedule[index].details[dIndex];
-                        if (!detail.new_files) {
-                            this.$set(detail, 'new_files', []);
-                        }
-                        detail.new_files.push(file);
+                        else newSortIndex = (currentSort_index + Math.floor(currentSort_index) + 1) / 2
                     }
-                },
-                deleteFile(index, dIndex, fileIndex, type) {
-                    const detail = this.numberedMergedSchedule[index].details[dIndex];
-                    if (type === 'old') {
-                        if (!("deleted_files" in detail)) {
-                            this.$set(detail, 'deleted_files', []);
-                        }
-                        const urlParts = (detail.file_urls[fileIndex] || '').split('/');
-                        detail.deleted_files.push(urlParts[urlParts.length - 1]);
-                        detail.file_urls.splice(fileIndex, 1);
-                        detail.file_names.splice(fileIndex, 1);
-                    } else if (type === 'new') {
-                        detail.new_files.splice(fileIndex, 1);
+                    else {
+                        newSortIndex = (currentSort_index + articles[aIndex + 1].sort_index) / 2
                     }
+
+                    currentArticle.lastVersion = 0;
+
+                    const match = currentArticle.converted.match(/^(.+條)(之+.)?$/);
+                    if (match) {
+                        const base = match[1]; // 例如「二條」
+                        const suffix = match[2]; // 若是 undefined 代表是整數條
+
+                        if (!suffix) {
+                            // 若是整數條，從之一開始
+                            newConverted = `${base}之一`;
+                        } else {
+                            // 若已有之x，就加一
+                            result = this.chineseToNumber(suffix.substring(1))
+                            const next = result + 1;
+                            const str = this.numberToChinese(next)
+                            newConverted = `${base}之${str}`;
+                        }
+                    } else {
+                        // 格式錯誤 fallback
+                        newSortIndex = '新條';
+                    }
+
+                    articles.push({
+                        lastVersion: 1,
+                        sort_index: newSortIndex,
+                        converted: newConverted,
+                        title: '',
+                        paragraphs: []
+                    });
+                    articles.sort((a, b) => a.sort_index - b.sort_index);
                 },
                 getStructuredContentFromRefs() {
                     const contentList = [];
@@ -562,13 +671,105 @@
                     });
                     return contentList;
                 },
+                chineseToNumber(chinese) {
+                    const map = { '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+                    let result = 0;
+
+                    if (chinese.includes('十')) {
+                        const parts = chinese.split('十');
+
+                        const tens = parts[0] === '' ? 1 : map[parts[0]]; // 處理「十」代表「一十」
+                        result += tens * 10;
+
+                        if (parts[1]) {
+                            result += map[parts[1]];
+                        }
+                    } else {
+                        result += map[chinese];
+                    }
+
+                    return result;
+                },
+                numberToChinese(num) {
+                    const units = ['', '十', '二十', '三十', '四十', '五十', '六十', '七十', '八十', '九十'];
+                    const digits = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+                    if (num <= 0 || num >= 100) return '不支援';
+
+                    const ten = Math.floor(num / 10);
+                    const one = num % 10;
+
+                    if (num < 10) {
+                        return digits[num];
+                    } else if (one === 0) {
+                        return units[ten];
+                    } else if (ten === 1) {
+                        return '十' + digits[one]; // 特別處理 10~19
+                    } else {
+                        return units[ten] + digits[one];
+                    }
+                },
+                convertArticles(floatList) {
+                    const chineseNumbers = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
+                        "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"];
+                    const suffixMap = ["之一", "之二", "之三", "之四", "之五", "之六", "之七", "之八", "之九", "之十"];
+
+                    const suffixLookup = {};
+                    const decimalSeen = {};  // 每條的非整數出現順序
+                    const lastLabelMap = {}; // 每條的最後一個 label
+                    const convertedList = [];
+
+                    // 第一次先建立每條的最後一個 label
+                    floatList.forEach(num => {
+                        const intPart = Math.floor(num);
+                        const base = chineseNumbers[intPart] + "條";
+
+                        if (!decimalSeen[intPart]) decimalSeen[intPart] = [];
+
+                        let label = "";
+
+                        if (Number.isInteger(num)) {
+                            label = base;
+                        } else {
+                            if (!suffixLookup[num]) {
+                                const index = decimalSeen[intPart].length;
+                                const suffix = suffixMap[index] || `之${index + 1}`;
+                                suffixLookup[num] = suffix;
+                                decimalSeen[intPart].push(num);
+                            }
+                            label = base + suffixLookup[num];
+                        }
+
+                        lastLabelMap[intPart] = label;
+                    });
+
+                    // 第二次產生結果 list 並標記最後一個
+                    floatList.forEach(num => {
+                        const intPart = Math.floor(num);
+                        const base = chineseNumbers[intPart] + "條";
+
+                        let label = "";
+
+                        if (Number.isInteger(num)) {
+                            label = base;
+                        } else {
+                            label = base + suffixLookup[num];
+                        }
+
+                        convertedList.push({
+                            converted: label,
+                            lastVersions: label === lastLabelMap[intPart] ? 1 : 0
+                        });
+                    });
+
+                    return convertedList;
+                }
+                ,
                 formatDate(date) {
                     let year = date.getUTCFullYear();
                     let month = String(date.getUTCMonth() + 1).padStart(2, '0');
                     let day = String(date.getUTCDate()).padStart(2, '0');
-                    let hours = String(date.getUTCHours()).padStart(2, '0');
-                    let minutes = String(date.getUTCMinutes()).padStart(2, '0');
-                    return `${year}-${month}-${day}T${hours}:${minutes}`;
+                    return `${year}-${month}-${day}`;
                 }
             },
         });
