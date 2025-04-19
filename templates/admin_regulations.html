@@ -180,8 +180,6 @@
                                 <div v-if="index === modalChapters.length-1">
                                     <div class="agenda-item">
                                         <button type="button" class="chapter_btn" @click="addChapters()">新增章節</button>
-                                        <!-- <input id="add_chapter_title" type="text" class="form-control"
-                                            placeholder="新增之章節標題 e.g. 校務之參與" aria-label="新增之章節標題"> -->
                                     </div>
                                     <br>
                                 </div>
@@ -197,7 +195,8 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary" @click="saveChange(userid)">儲存規章</button>
+                            <button type="button" class="btn btn-primary"
+                                @click="saveChange(userid)">儲存規章(還沒用好，先不要按)</button>
                             <div v-if="uploading" class="uploading-overlay">
                                 <div class="uploading-box">
                                     <div class="spinner-border custom-spinner" role="status"></div>
