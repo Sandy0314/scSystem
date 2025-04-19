@@ -215,7 +215,7 @@ label {
 
 .detail_btn {
     white-space: nowrap;
-    margin-left: 10px;
+    /* margin-left: 10px; */
     /* 防止按鈕折行 */
     padding: 1.5px 4px;
     cursor: pointer;
@@ -224,6 +224,7 @@ label {
     border: none;
     border-radius: 5px;
 }
+
 
 .detail_btn:hover {
     background-color: #a9bed5;
