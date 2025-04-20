@@ -205,12 +205,58 @@ label {
     font-weight: normal;
 }
 
-.agenda-item {
+/* .agenda-item {
     display: flex;
     align-items: center;
-    /* 讓文字和按鈕垂直對齊 */
+    讓文字和按鈕垂直對齊
     gap: 10px;
-    /* 文字與按鈕之間的間距 */
+    文字與按鈕之間的間距
+} */
+.agenda-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.textarea-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.textarea-wrapper textarea {
+    width: 100%;
+    min-height: 80px;
+    padding-right: 50px;
+    /* 預留右側空間給按鈕 */
+    box-sizing: border-box;
+}
+
+.auto-resize-textarea {
+    resize: none;
+    overflow: hidden;
+    min-height: 3rem;
+    line-height: 1.5;
+}
+
+
+/* 根據按鈕多寡決定高度大小 */
+.textarea-wrapper.three-buttons textarea {
+    min-height: 110px;
+}
+
+.textarea-buttons {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.input-group .btn {
+    height: 100%;
+    border-radius: 0;
+    white-space: nowrap;
 }
 
 .detail_btn {
