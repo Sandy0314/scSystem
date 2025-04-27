@@ -14,12 +14,14 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import case
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import joinedload
+from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
 import re, time
 
-# 載入本地 .env 環境變數
-load_dotenv()
+# 載入本地 .env 環境變數# 確保永遠讀到正確的 .env
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 app = Flask(__name__)
 
@@ -41,7 +43,6 @@ s3 = boto3.client(
     aws_secret_access_key=S3_SECRET,
     region_name=S3_REGION,
 )
-
 # 設定 SQLAlchemy 資料庫連線
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -64,6 +65,7 @@ class User(UserMixin, db.Model):
     # 一個用戶可以擁有多條通知和紀錄
     notifications = db.relationship("Notification", backref="user", lazy=True)
     records = db.relationship("Record", backref="user", lazy=True)
+    regulations = db.relationship("Regulation", backref="user", lazy=True)
 
     def __repr__(self):
         return f"<User {self.username}>"
@@ -204,6 +206,10 @@ class Regulation(db.Model):
     revisions = db.relationship(
         "Revision", backref="regulation", lazy=True, cascade="all, delete-orphan"
     )
+    # 外鍵連接到用戶
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
 
     def __repr__(self):
         return f"<Regulation {self.title}>"
@@ -215,7 +221,7 @@ class Revision(db.Model):
     regulation_id = db.Column(
         db.Integer, db.ForeignKey("regulation.id"), nullable=False
     )
-    modified_at = db.Column(db.DateTime, default=datetime.utcnow)
+    modified_at = db.Column(db.Date, nullable=False)
     note = db.Column(db.Text)
 
     def __repr__(self):
@@ -528,7 +534,7 @@ def getDataFromFrontend(request):
         print(original, "上傳s3", time.time() - upload_time)
 
     deleted_files = []
-    content = content = parse_json_field(request, "content")
+    content = parse_json_field(request, "content")
     # 填入 file_urls
     for schedule in content:
         for detail in schedule["details"]:
@@ -734,6 +740,103 @@ def getRegulationContentFromDB(reg_id):
     }
 
 
+def getRegulationFromFrontend(request):
+    is_visible = request.form.get("is_visible")
+    data = {
+        "title": request.form.get("title"),
+        "category": request.form.get("category"),
+        "description": request.form.get("description"),
+        "is_visible": True if is_visible == "true" else False,
+    }
+    data["content"] = parse_json_field(request, "content")
+    data["revision"] = parse_json_field(request, "revision")
+    return data
+
+
+def deletChapter(id):
+    st_time = time.time()
+    regulation = (
+        Regulation.query.options(
+            joinedload(Regulation.chapters)
+            .joinedload(Chapter.articles)
+            .joinedload(Article.paragraphs)
+            .joinedload(Paragraph.clauses),
+            joinedload(Regulation.revisions),
+        )
+        .filter_by(id=id)
+        .first()
+    )
+    if not regulation:
+        raise ValueError(f"Regulation id {id} not found.")
+    # 刪掉所有章節底下的資料
+    for chapter in regulation.chapters:
+        for article in chapter.articles:
+            for paragraph in article.paragraphs:
+                for clause in paragraph.clauses:
+                    db.session.delete(clause)
+                db.session.delete(paragraph)
+            db.session.delete(article)
+        db.session.delete(chapter)
+
+    # 刪掉修訂紀錄
+    for revision in regulation.revisions:
+        db.session.delete(revision)
+
+    db.session.commit()
+    print("刪章節,id=", id, " 花費時間:", time.time() - st_time)
+
+
+def addChapter(content, revision, regulation_id):
+    st_time = time.time()
+    # 新增章節
+    for chapter_data in content:
+        chapter = Chapter(
+            regulation_id=regulation_id,
+            title=chapter_data["title"],
+            number=chapter_data["number"],
+        )
+        db.session.add(chapter)
+        db.session.flush()  # 把 chapter.id 生出來給後面用
+
+        for article_data in chapter_data.get("articles", []):
+            article = Article(
+                chapter_id=chapter.id,
+                title=article_data["title"],
+                sort_index=article_data["sort_index"],
+            )
+            db.session.add(article)
+            db.session.flush()
+
+            for paragraph_data in article_data.get("paragraphs", []):
+                paragraph = Paragraph(
+                    article_id=article.id,
+                    number=paragraph_data["number"],
+                    content=paragraph_data["content"],
+                )
+                db.session.add(paragraph)
+                db.session.flush()
+
+                for clause_data in paragraph_data.get("clauses", []):
+                    clause = Clause(
+                        paragraph_id=paragraph.id,
+                        number=clause_data["number"],
+                        content=clause_data["content"],
+                    )
+                    db.session.add(clause)
+
+    # 新增修訂紀錄
+    for rev in revision:
+        rev_obj = Revision(
+            regulation_id=regulation_id,
+            modified_at=datetime.strptime(rev["date"], "%Y-%m-%d").date(),
+            note=rev["note"],
+        )
+        db.session.add(rev_obj)
+
+    db.session.commit()
+    print("新增章節,id=", id, " 花費時間:", time.time() - st_time)
+
+
 # 設定如何載入使用者
 @login_manager.user_loader
 def load_user(user_id):
@@ -863,7 +966,7 @@ def admin_record_getdetail(id):
 def admin_regulations_getdetail(id):
     try:
         result = getRegulationContentFromDB(id)
-        print(result)
+        # print(result)
         # 顯示章條項款
         for chapter in result["chapters"]:
             print(f"第 {chapter['number']} 章：{chapter['title']}")
@@ -1030,46 +1133,39 @@ def upload_record():
 def upload_regulation():
     try:
         record_time = time.time()
-        data, deleted_files = getDataFromFrontend(request)
-        record_id = request.form.get("id")
+        data = getRegulationFromFrontend(request)
+        regulation_id = request.form.get("id")
 
-        is_new = record_id == "-1"
+        is_new = regulation_id == "-1"
+        print("current_user.id", current_user.id)
         if is_new:
-            print("新增紀錄")
-            record = Record(
+            print("新增規章")
+            regulation = Regulation(
                 user_id=current_user.id,
-                is_modify=True,
             )
-            db.session.add(record)
+            db.session.add(regulation)
         else:
-            print(f"修改紀錄 id = {record_id}")
-            record = Record.query.get(record_id)
-            if not record:
+            print(f"修改規章 id = {regulation_id}")
+            regulation = Regulation.query.get(regulation_id)
+            if not regulation:
                 return {"error": "找不到紀錄資料"}, 404
-            record.is_modify = True
         # 通用欄位填入
         for field in [
             "title",
             "category",
-            "date",
-            "place",
-            "person",
-            "shorthand",
-            "present",
-            "attendance",
+            "description",
             "is_visible",
         ]:
-            setattr(record, field, data[field])
+            setattr(regulation, field, data[field])
         db.session.flush()
 
         if not is_new:
-            deletSchedule(record.id, deleted_files, is_record=True)
-
-        addSchedule(data["content"], record.id, is_record=True)
+            deletChapter(regulation.id)
+        addChapter(data["content"], data["revision"], regulation.id)
         db.session.commit()
         print("完成", time.time() - record_time)
 
-        return admin_record_data()
+        return admin_regulations_data()
     except Exception as e:
         db.session.rollback()
         print(str(e))
