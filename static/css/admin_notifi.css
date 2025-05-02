@@ -7,7 +7,7 @@
 }
 
 /* 页面居中 */
-#app {
+#app_background {
     /* align-items: center; */
     min-height: 100vh;
     background: linear-gradient(135deg, rgb(221, 221, 221), rgb(221, 221, 221));
@@ -18,10 +18,6 @@
 
 }
 
-/* rgb(177, 203, 224), rgb(192, 224, 250) */
-/* RGB (143,173,198)
-RGB (85,149,165)
-RGB (221,221,221 */
 h1 {
     font-size: 30px;
     color: #333;
@@ -40,7 +36,7 @@ h1 {
 }
 
 .item_btn:hover {
-    background-color: #0056b3;
+    background-color: #435c77;
 }
 
 /* 限制每屆內容的顯示區塊 */
@@ -65,7 +61,17 @@ h1 {
 }
 
 .new_btn:hover {
-    background-color: #a9bed5;
+    background-color: rgb(52, 68, 85);
+}
+
+.btn_save {
+    background-color: #3c7fc3;
+    color: white;
+    border: none;
+}
+
+.btn_save:hover {
+    background-color: #80b2e4;
 }
 
 /* 使頁面滾動 */
@@ -128,29 +134,58 @@ label {
 
 .input_text {
     text-align: left;
+    font-size: large;
     font-weight: bold;
     display: inline-block;
     white-space: nowrap;
+    padding-bottom: 5px;
 }
 
 .normal_text {
     text-align: left;
-    /* 文字靠左 */
     display: inline-block;
-    /* 讓文字和按鈕保持同一行 */
-    margin-left: 10px;
-    margin-right: 10px;
+    /* margin-left: 10px;
+    margin-right: 10px; */
     font-weight: normal;
+    padding: 0;
+    margin: 0;
+
 }
 
 .agenda-item {
     display: flex;
     align-items: center;
-    /* 讓文字和按鈕垂直對齊 */
     gap: 10px;
-    /* 文字與按鈕之間的間距 */
 }
 
+.members-table {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 16px;
+    white-space: nowrap;
+    padding-bottom: 10px;
+}
+
+.member-row {
+    display: flex;
+    gap: 60px;
+}
+
+.member-col {
+    display: flex;
+    min-width: 250px;
+}
+
+.persontitle {
+    flex: 1;
+    text-align: justify;
+    padding-right: 10px;
+}
+
+.name {
+    white-space: nowrap;
+}
 
 .detail_btn {
     white-space: nowrap;
@@ -183,20 +218,29 @@ label {
     background-color: #ea4646;
 }
 
+/* 唯讀模式樣式 */
 .detail-wrapper {
-    margin-left: 10px;
-    background-color: #f8f9fa;
-    /* Bootstrap 的 bg-light 顏色 */
-    border: 1px solid #dee2e6;
-    /* 淡灰色邊框 */
-    border-radius: 0.5rem;
-    /* 圓角 */
-    padding: 0.5rem;
-    /* 內距 */
-    margin-bottom: 0.5rem;
-    /* 每筆細項之間的間距 */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    position: relative;
+    &.editable {
+        margin-left: 10px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        position: relative;
+        margin-bottom: 0.5rem;
+    }
+
+    &.readonly {
+        margin: 5px 0 0 30px;
+        text-align: left;
+    }
+}
+
+.detail-text {
+    white-space: pre-line;
+    text-align: left;
+    /* margin: 5px 0 0 0; */
 }
 
 .schedule_btn {
@@ -324,6 +368,13 @@ input:checked+.slider::before {
     transform: translateX(28px);
 }
 
+.auto-resize-textarea {
+    resize: none;
+    overflow: hidden;
+    min-height: 3rem;
+    line-height: 1.5;
+}
+
 /* Header 样式 */
 header {
     background-color: #333;
@@ -358,6 +409,7 @@ header nav ul li a {
 
 header nav ul li a:hover {
     background-color: #575757;
+    color: rgb(0, 0, 0);
 }
 
 /* Footer 样式 */

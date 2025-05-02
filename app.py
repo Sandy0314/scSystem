@@ -420,13 +420,18 @@ def convert_to_dict(data):
     return result
 
 
-def getAllMeetTitleFromDB(Table):
-    tables = (
-        db.session.query(Table).order_by(Table.session.desc(), Table.date.desc()).all()
-    )
+def getAllMeetTitleFromDB(Table, only_visible: bool = False):
+    query = db.session.query(Table)
+
+    if only_visible:
+        query = query.filter(Table.is_visible == True)
+
+    tables = query.order_by(Table.session.desc(), Table.date.desc()).all()
+
     result = []
     seen_sessions = set()
     session_list = []
+
     for table in tables:
         session_str = number_to_chinese(table.session)
         if session_str not in seen_sessions:
@@ -441,6 +446,7 @@ def getAllMeetTitleFromDB(Table):
                 "is_visible": table.is_visible,
             }
         )
+
     return result, session_list
 
 
@@ -526,11 +532,16 @@ def getDataFromFrontend(request):
             original = file.filename
             safe = generate_unique_filename(original)
             upload_time = time.time()
-            s3.upload_fileobj(file, S3_BUCKET, safe, ExtraArgs={"ACL": "public-read"})
-            uploaded_files_info[original] = {
-                "original": original,
-                "safe": safe,
-            }
+            try:
+                s3.upload_fileobj(
+                    file, S3_BUCKET, safe, ExtraArgs={"ACL": "public-read"}
+                )
+                uploaded_files_info[original] = {
+                    "original": original,
+                    "safe": safe,
+                }
+            except Exception as e:
+                print(e, "  上傳失敗")
         print(original, "上傳s3", time.time() - upload_time)
 
     deleted_files = []
@@ -643,7 +654,7 @@ def deletSchedule(id, deleted_files, is_record):
     print("刪議程,id=", id, " 紀錄:", is_record, " 花費時間:", time.time() - st_time)
 
 
-def getAllRegulationTitleFromDB(Table):
+def getAllRegulationTitleFromDB(Table, only_visible: bool = False):
     category_ordering = {
         "憲制性法規篇": 1,
         "綜合法規篇": 2,
@@ -657,7 +668,13 @@ def getAllRegulationTitleFromDB(Table):
         *[(Table.category == name, order) for name, order in category_ordering.items()],
         else_=100,
     )
-    regulations = db.session.query(Table).order_by(category_order, Table.id.asc()).all()
+
+    query = db.session.query(Table)
+    if only_visible:
+        query = query.filter(Table.is_visible == True)
+
+    regulations = query.order_by(category_order, Table.id.asc()).all()
+
     result = [
         {
             "id": r.id,
@@ -881,53 +898,41 @@ def logout():
     return redirect(url_for("index"))
 
 
-@app.route("/admin/notifi")
-# @login_required  # 需要用戶登入才能訪問
+@app.route("/notifi")
 def admin_notifi_page():
-    return render_template("admin_notifi.html")
+    return render_template("admin_notifi.html", editable=current_user.is_authenticated)
 
 
-@app.route("/admin/minutes")
-# @login_required  # 需要用戶登入才能訪問
+@app.route("/minutes")
 def admin_minutes_page():
-    return render_template("admin_minutes.html")
+    return render_template("admin_minutes.html", editable=current_user.is_authenticated)
 
 
-@app.route("/admin/regulations")
-# @login_required  # 需要用戶登入才能訪問
+@app.route("/regulations")
 def admin_regulations_page():
-    return render_template("admin_regulations.html")
+    return render_template(
+        "admin_regulations.html", editable=current_user.is_authenticated
+    )
 
 
-@app.route("/admin/notifi/data")
+@app.route("/notifi/data")
 # @login_required  # 需要用戶登入才能訪問
 def admin_notifi_data():
     try:
-        result, session_list = getAllMeetTitleFromDB(Notification)
-        return jsonify({"notifications": result, "session_list": session_list}), 200
-    except Exception as e:
-        print("error", str(e))
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/admin/minutes/data")
-# @login_required  # 需要用戶登入才能訪問
-def admin_record_data():
-    try:
-        result, session_list = getAllMeetTitleFromDB(Record)
-        return jsonify({"records": result, "session_list": session_list}), 200
-    except Exception as e:
-        print("error", str(e))
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/admin/regulations/data")
-# @login_required  # 需要用戶登入才能訪問
-def admin_regulations_data():
-    try:
-        result, category_list = getAllRegulationTitleFromDB(Regulation)
+        # 根據是否登入決定是否顯示所有與是否可編輯
+        is_authenticated = current_user.is_authenticated
+        print("is_authenticated", is_authenticated)
+        result, session_list = getAllMeetTitleFromDB(
+            Notification, only_visible=not is_authenticated
+        )
         return (
-            jsonify({"regulations": result, "category_list": category_list}),
+            jsonify(
+                {
+                    "notifications": result,
+                    "session_list": session_list,
+                    "editable": is_authenticated,
+                }
+            ),
             200,
         )
     except Exception as e:
@@ -935,7 +940,54 @@ def admin_regulations_data():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/notifi/data/<int:id>", methods=["GET"])
+@app.route("/minutes/data")
+# @login_required  # 需要用戶登入才能訪問
+def admin_record_data():
+    try:
+        # 根據是否登入決定是否顯示所有與是否可編輯
+        is_authenticated = current_user.is_authenticated
+        result, session_list = getAllMeetTitleFromDB(
+            Record, only_visible=not is_authenticated
+        )
+        return (
+            jsonify(
+                {
+                    "records": result,
+                    "session_list": session_list,
+                    "editable": is_authenticated,
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        print("error", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/regulations/data")
+# @login_required  # 需要用戶登入才能訪問
+def admin_regulations_data():
+    try:
+        is_authenticated = current_user.is_authenticated
+        result, category_list = getAllRegulationTitleFromDB(
+            Regulation, only_visible=not is_authenticated
+        )
+        return (
+            jsonify(
+                {
+                    "regulations": result,
+                    "category_list": category_list,
+                    "editable": is_authenticated,
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        print("error", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/notifi/data/<int:id>", methods=["GET"])
 # @login_required  # 需要用戶登入才能訪問
 def admin_notifi_getdetail(id):
     try:
@@ -948,7 +1000,7 @@ def admin_notifi_getdetail(id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/minutes/data/<int:id>", methods=["GET"])
+@app.route("/minutes/data/<int:id>", methods=["GET"])
 # @login_required  # 需要用戶登入才能訪問
 def admin_record_getdetail(id):
     try:
@@ -961,25 +1013,25 @@ def admin_record_getdetail(id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/regulations/data/<int:id>", methods=["GET"])
+@app.route("/regulations/data/<int:id>", methods=["GET"])
 # @login_required  # 需要用戶登入才能訪問
 def admin_regulations_getdetail(id):
     try:
         result = getRegulationContentFromDB(id)
         # print(result)
         # 顯示章條項款
-        for chapter in result["chapters"]:
-            print(f"第 {chapter['number']} 章：{chapter['title']}")
-            for article in chapter["articles"]:
-                print(f"  第 {article['sort_index']} 條：{article['title']}")
-                for para in article["paragraphs"]:
-                    print(f"    第 {para['number']} 項：{para['content']}")
-                    for sub in para["clauses"]:
-                        print(f"      第 {sub['number']} 款：{sub['content']}")
-        # 顯示修訂紀錄
-        print("\n修訂紀錄：")
-        for rev in result["revisions"]:
-            print(f"  {rev['modified_at']} - {rev['note']}")
+        # for chapter in result["chapters"]:
+        #     print(f"第 {chapter['number']} 章：{chapter['title']}")
+        #     for article in chapter["articles"]:
+        #         print(f"  第 {article['sort_index']} 條：{article['title']}")
+        #         for para in article["paragraphs"]:
+        #             print(f"    第 {para['number']} 項：{para['content']}")
+        #             for sub in para["clauses"]:
+        #                 print(f"      第 {sub['number']} 款：{sub['content']}")
+        # # 顯示修訂紀錄
+        # print("\n修訂紀錄：")
+        # for rev in result["revisions"]:
+        #     print(f"  {rev['modified_at']} - {rev['note']}")
         if result:
             return jsonify({"regulations": result}), 200
         return jsonify({"error": "找不到此通知"}), 404
@@ -988,7 +1040,8 @@ def admin_regulations_getdetail(id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/notifi/upload", methods=["POST"])
+@app.route("/notifi/upload", methods=["POST"])
+@login_required  # 需要用戶登入才能訪問
 def upload_notifi():
     try:
         not_time = time.time()
@@ -1078,7 +1131,8 @@ def upload_notifi():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/minutes/upload", methods=["POST"])
+@app.route("/minutes/upload", methods=["POST"])
+@login_required  # 需要用戶登入才能訪問
 def upload_record():
     try:
         record_time = time.time()
@@ -1129,7 +1183,8 @@ def upload_record():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/regulations/upload", methods=["POST"])
+@app.route("/regulations/upload", methods=["POST"])
+@login_required  # 需要用戶登入才能訪問
 def upload_regulation():
     try:
         record_time = time.time()
@@ -1172,17 +1227,90 @@ def upload_regulation():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/admin/article/<int:article_id>", methods=["GET", "POST"])
-# @login_required  # 需要登录才能访问
-def admin_check_article(article_id):
-    # 管理员检查文章
-    pass
+@app.route("/viewer/notifi")
+def viewer_notifi_page():
+    return render_template("viewer_notifi.html")
 
 
-@app.route("/article/<int:article_id>", methods=["GET"])
-def view_article(article_id):
-    # 展示文章内容给浏览者
-    pass
+@app.route("/viewer/minutes")
+def viewer_minutes_page():
+    return render_template("viewer_minutes.html")
+
+
+@app.route("/viewer/regulations")
+def viewer_regulations_page():
+    return render_template("viewer_regulations.html")
+
+
+@app.route("/viewer/notifi/data")
+def viewer_notifi_data():
+    try:
+        result, session_list = getAllMeetTitleFromDB(Notification, only_visible=True)
+        return jsonify({"notifications": result, "session_list": session_list}), 200
+    except Exception as e:
+        print("error", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/viewer/minutes/data")
+def viewer_record_data():
+    try:
+        result, session_list = getAllMeetTitleFromDB(Record, only_visible=True)
+        return jsonify({"records": result, "session_list": session_list}), 200
+    except Exception as e:
+        print("error", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/viewer/regulations/data")
+def viewer_regulations_data():
+    try:
+        result, category_list = getAllRegulationTitleFromDB(
+            Regulation, only_visible=True
+        )
+        return (
+            jsonify({"regulations": result, "category_list": category_list}),
+            200,
+        )
+    except Exception as e:
+        print("error", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/viewer/notifi/data/<int:id>", methods=["GET"])
+def viewer_notifi_getdetail(id):
+    try:
+        result = getMeetContentFromDB(Notification, id, 0)
+        if result:
+            return jsonify({"notifications": result}), 200
+        return jsonify({"error": "找不到此通知"}), 404
+    except Exception as e:
+        print("error", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/viewer/minutes/data/<int:id>", methods=["GET"])
+def viewer_record_getdetail(id):
+    try:
+        result = getMeetContentFromDB(Record, id, 1)
+        if result:
+            return jsonify({"records": result}), 200
+        return jsonify({"error": "找不到此通知"}), 500
+    except Exception as e:
+        print("error", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/viewer/regulations/data/<int:id>", methods=["GET"])
+def viewer_regulations_getdetail(id):
+    try:
+        result = getRegulationContentFromDB(id)
+        if result:
+            return jsonify({"regulations": result}), 200
+        return jsonify({"error": "找不到此通知"}), 404
+    except Exception as e:
+        print("error", str(e))
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

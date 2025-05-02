@@ -23,6 +23,8 @@
                 <button type="submit" class="login-btn">Login</button>
             </form>
             <p class="error-message" v-if="errorMessage">{{ errorMessage }}</p>
+            <br>
+            <button type="button" class="login-btn" @click="viewer()">進入瀏覽者畫面</button>
         </div>
     </div>
 
@@ -65,7 +67,7 @@
                         if (response.data.success) {
                             console.log('success')
                             sessionStorage.setItem("loggedIn", "true");
-                            window.location.href = "/admin/notifi";  // 登录成功，跳转到 /admin/notifi 页面
+                            window.location.href = "/notifi";  // 登录成功，跳转到 /admin/notifi 页面
 
                         } else {
                             console.log('Invalid credentials')
@@ -74,7 +76,7 @@
 
                         }
                     } catch (error) {
-                        this.errorMessage = "Login failed";
+                        this.errorMessage = "登入失敗，請檢查用戶名和密碼";
                     }
                 },
                 logoutAutomatically() {
@@ -102,9 +104,12 @@
 
                 // 檢查登錄狀態並登出
                 checkAndLogout() {
-                    if (window.location.pathname === '/admin/notifi' && !this.isLoggingOut) {
+                    if (window.location.pathname === '/notifi' && !this.isLoggingOut) {
                         this.logoutAutomatically();
                     }
+                },
+                viewer() {
+                    window.location.href = '/notifi';
                 }
             },
             mounted() {

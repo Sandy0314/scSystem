@@ -7,7 +7,7 @@
 }
 
 /* 页面居中 */
-#app {
+#app_background {
     /* align-items: center; */
     min-height: 100vh;
     background: linear-gradient(135deg, rgb(221, 221, 221), rgb(221, 221, 221));
@@ -36,7 +36,7 @@ h1 {
 }
 
 .item_btn:hover {
-    background-color: #0056b3;
+    background-color: #435c77;
 }
 
 /* 限制每屆內容的顯示區塊 */
@@ -61,7 +61,17 @@ h1 {
 }
 
 .new_btn:hover {
-    background-color: #a9bed5;
+    background-color: rgb(52, 68, 85);
+}
+
+.btn_save {
+    background-color: #3c7fc3;
+    color: white;
+    border: none;
+}
+
+.btn_save:hover {
+    background-color: #80b2e4;
 }
 
 /* 使頁面滾動 */
@@ -200,7 +210,7 @@ label {
     font-weight: bold;
     display: inline-block;
     white-space: nowrap;
-    min-width: 70px;
+    min-width: 40px;
 }
 
 .normal_text {
@@ -208,22 +218,35 @@ label {
     /* 文字靠左 */
     display: inline-block;
     /* 讓文字和按鈕保持同一行 */
-    margin-left: 10px;
-    margin-right: 10px;
+    /* margin-left: 10px;
+    margin-right: 5px; */
+    padding: 0;
+    margin: 0;
     font-weight: normal;
 }
 
-/* .agenda-item {
-    display: flex;
-    align-items: center;
-    讓文字和按鈕垂直對齊
-    gap: 10px;
-    文字與按鈕之間的間距
-} */
+.description-text {
+    white-space: normal;
+    /* 允許換行 */
+    word-break: break-word;
+    line-height: 1.6;
+    text-align: left;
+}
+
 .agenda-item {
     display: flex;
     align-items: flex-start;
     gap: 10px;
+}
+
+.clause-wrapper {
+    &.editable {
+        padding: 10px;
+    }
+
+    &.readonly {
+        padding: 0;
+    }
 }
 
 .textarea-wrapper {
@@ -260,6 +283,37 @@ label {
     flex-direction: column;
     gap: 4px;
 }
+
+.textarea-wrapper1 {
+    position: relative;
+    width: 100%;
+}
+
+.textarea-wrapper1 textarea {
+    width: 100%;
+    padding-right: 75px;
+    /* 預留右側空間給按鈕 */
+    box-sizing: border-box;
+}
+
+/* 根據按鈕多寡決定高度大小 */
+.textarea-wrapper1.three-buttons textarea {
+    padding-right: 115px;
+
+}
+
+.textarea-wrapper1 .btn {
+    height: 40px;
+    border-radius: 0px;
+    white-space: nowrap;
+}
+
+.textarea1-buttons {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+}
+
 
 .input-group .btn {
     height: 100%;
@@ -470,6 +524,7 @@ header nav ul li a {
 
 header nav ul li a:hover {
     background-color: #575757;
+    color: rgb(0, 0, 0);
 }
 
 /* Footer 样式 */

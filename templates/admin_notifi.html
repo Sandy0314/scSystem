@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>admin_notifi</title>
+    <title>通知</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"
@@ -12,27 +12,27 @@
         crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- 引入 Axios -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/admin_notifi.css">
-
 </head>
-
 
 <body>
     {% raw %}
     <!-- Header -->
-    <div class="content-container">
+    <div id="app" class="content-container">
         <header>
             <nav>
                 <ul>
-                    <li><a href="/admin/notifi">會議通知</a></li>
-                    <li><a href="/admin/minutes">會議記錄</a></li>
-                    <li><a href="/admin/regulations">規章</a></li>
-                    <li><a href="/logout">登出</a></li>
+                    <li><a href="/notifi">會議通知</a></li>
+                    <li><a href="/minutes">會議記錄</a></li>
+                    <li><a href="/regulations">規章</a></li>
+                    <li v-if="editable === true"><a href="/logout">登出</a></li>
+                    <li v-else><a href="/">登入</a></li>
                 </ul>
             </nav>
         </header>
-        <div id="app">
-            <button class="new_btn" @click="openModal(-1)">新增通知</button>
+        <div id="app_background">
+            <button v-if="editable" class="new_btn" @click="openModal(-1)">新增通知</button>
             <div v-if="loading" class="loading-overlay">
                 <div class="loading-box">
                     <div class="spinner-border custom-spinner" role="status"></div>
@@ -53,58 +53,89 @@
                         <div class="modal-header">
                             <h5 class="modal-title w-100" id="itemModalLabel">
                                 <div class="form-group">
-                                    <label for="title" class="input_text">會議通知標題 :</label>
-                                    <input id="title" type="text" class="form-control"
+                                    <label v-if="editable" for="title" class="input_text">會議通知標題 :</label>
+                                    <input v-if="editable" id="title" type="text" class="form-control"
                                         placeholder="例：113-2學生代表大會第一次定期大會議程暨關係文書" aria-label="會議標題"
                                         aria-describedby="basic-addon1" v-model="modalTitle">
+                                    <div v-else class="input_text">{{modalTitle}}</div>
                                 </div>
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="form-group">
+                            <div v-if="editable" class="form-group">
                                 <label for="session" class="input_text">屆數 :</label>
                                 <input id="session" type="text" class="form-control" placeholder="例：第二十六屆"
                                     aria-label="屆數" aria-describedby="basic-addon1" v-model="modalSession">
                             </div>
                             <div class="form-group">
-                                <label for="date" class="input_text">會議日期 :</label>
-                                <input id="date" type="datetime-local" class="form-control" aria-label="會議日期"
-                                    aria-describedby="basic-addon1" v-model="modalDate">
+                                <label for="date" class="input_text">會議時間 :</label>
+                                <input v-if="editable" id="date" type="datetime-local" class="form-control"
+                                    aria-label="會議日期" aria-describedby="basic-addon1" v-model="modalDate">
+                                <div v-else class="input_text">{{modalDate}}</div>
                             </div>
                             <div class="form-group">
                                 <label for="place" class="input_text">會議地點 :</label>
-                                <input id="place" type="text" class="form-control" placeholder="會議地點" aria-label="會議地點"
-                                    aria-describedby="basic-addon1" v-model="modalPlace">
+                                <input v-if="editable" id="place" type="text" class="form-control" placeholder="會議地點"
+                                    aria-label="會議地點" aria-describedby="basic-addon1" v-model="modalPlace">
+                                <div v-else class="input_text">{{modalPlace}}</div>
                             </div>
                             <div class="form-group">
                                 <label for="contact_person" class="input_text">會議聯絡人 :</label>
-                                <input id="contact_person" type="text" class="form-control" placeholder="會議聯絡人"
-                                    aria-label="會議聯絡人" aria-describedby="basic-addon1" v-model="modalPerson">
+                                <input v-if="editable" id="contact_person" type="text" class="form-control"
+                                    placeholder="會議聯絡人" aria-label="會議聯絡人" aria-describedby="basic-addon1"
+                                    v-model="modalPerson">
+                                <div v-else class="input_text">{{modalPerson}}</div>
                             </div>
                             <div class="form-group">
                                 <label for="shorthand_link" class="input_text">速記連結 :</label>
-                                <input id="shorthand_link" type="text" class="form-control" placeholder="速記連結"
-                                    aria-label="速記連結" aria-describedby="basic-addon1" v-model="modalShorthand">
+                                <input v-if="editable" id="shorthand_link" type="text" class="form-control"
+                                    placeholder="速記連結" aria-label="速記連結" aria-describedby="basic-addon1"
+                                    v-model="modalShorthand">
+                                <div v-else>
+                                    <a v-if="modalShorthand" class="input_text" :href="modalShorthand"
+                                        target="_blank">速記</a>
+                                    <span v-else class="text-muted">（尚無速記）</span>
+                                </div>
                             </div>
                             <div class="form-group">
-                                <label for="present_list" class="input_text">出席名單 :</label>
-                                <textarea id="present_list" class="form-control"
+                                <label for="present_list" class="input_text">出席名單 </label>
+                                <textarea v-if="editable" id="present_list" class="form-control auto-resize-textarea"
                                     placeholder="例：本會各學生代表、......&#13;&#10; (稱謂和名字請以空白隔開，人物之間請以逗號分隔)" aria-label="出席名單"
-                                    aria-describedby="basic-addon1" v-model="modalPresent"></textarea>
+                                    aria-describedby="basic-addon1" v-model="modalPresentEdit"
+                                    @input="autoResize($event)"></textarea>
+                                <div v-else class="members-table">
+                                    <div class="member-row" v-for="(pair, index) in pairedPresents" :key="index">
+                                        <div class="member-col" v-for="(item, idx) in pair" :key="idx" v-if="item">
+                                            <span class="persontitle">{{ item.split(' ')[0] }}</span>
+                                            <span class="name">{{ item.split(' ')[1] }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="attendance_list" class="input_text">列席名單 :</label>
-                                <textarea id="attendance_list" class="form-control"
+                            <div v-if="editable" class="form-group">
+                                <label for="attendance_list" class="input_text">列席名單 </label>
+                                <textarea id="attendance_list" class="form-control auto-resize-textarea"
                                     placeholder="例：被提名人 王o明、被提名人 王x明、本會各秘書、......&#13;&#10; (稱謂和名字請以空白隔開，人物之間請以逗號分隔)"
-                                    aria-label="列席名單" aria-describedby="basic-addon1"
-                                    v-model="modalAttendance"></textarea>
+                                    aria-label="列席名單" aria-describedby="basic-addon1" v-model="modalAttendanceEdit"
+                                    @input="autoResize($event)"></textarea>
+                            </div>
+                            <div v-else class="members-table">
+                                <label for="attendance_list" class="input_text">列席名單 </label>
+                                <div class="members-table">
+                                    <div class="member-row" v-for="(pair, index) in pairedAttendances" :key="index">
+                                        <div class="member-col" v-for="(item, idx) in pair" :key="idx" v-if="item">
+                                            <span class="persontitle">{{ item.split(' ')[0] }}</span>
+                                            <span class="name">{{ item.split(' ')[1] }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="input_text">議程</div>
-                            <div v-for="(schedule, index) in numberedMergedSchedule" :key="index" class="mb-4">
-                                <div v-if="index === modalbeforeDiscussion">
+                            <div v-for="(schedule, index) in numberedMergedSchedule" :key="index" class="mb-2">
+                                <div v-if="index === modalbeforeDiscussion && editable">
                                     <div class="agenda-item">
-                                        <button type="button" class="schedule_btn" @click="add_schedule()">新增議程</button>
+                                        <button type="button" class="schedule_btn" @click="add_schedule()">＋議程</button>
                                         <input id="schedule_title" type="text" class="form-control"
                                             placeholder="新增之議程標題 e.g. 人事同意案" aria-label="新增之議程標題">
                                     </div>
@@ -113,53 +144,68 @@
                                 <!-- 議程標題 -->
                                 <div class="agenda-item">
                                     <div class="normal_text">{{ schedule.number }}、{{ schedule.title }}</div>
-                                    <div v-if="!isTitleRestricted(schedule.title)">
-                                        <button class="btn delete_btn" @click="deleteSchedule(index)">刪除議程</button>
+                                    <div v-if="!isTitleRestricted(schedule.title) && editable">
+                                        <button class="btn delete_btn" @click="deleteSchedule(index)">－議程</button>
                                     </div>
                                 </div>
                                 <!-- 細項列表 -->
-                                <div v-for="(detail, dIndex) in schedule.details" :key="dIndex" class="detail-wrapper">
-                                    <textarea class="form-control mb-2" v-model="detail.content"
-                                        :ref="`detailTextarea-${index}-${dIndex}`" placeholder="請輸入內容">
+                                <div v-for="(detail, dIndex) in schedule.details" :key="dIndex"
+                                    :class="['detail-wrapper', editable ? 'editable' : 'readonly']">
+                                    <template v-if="editable">
+                                        <textarea class="form-control mb-2 auto-resize-textarea"
+                                            v-model="detail.content" :ref="`detailTextarea-${index}-${dIndex}`"
+                                            placeholder="請輸入內容" @input="autoResize($event)">
                                               </textarea>
-                                    <!-- 舊有檔案列表 -->
-                                    <div v-if="detail.file_urls && detail.file_urls.length" class="mb-2"
-                                        :ref="`oldFiles-${index}-${dIndex}`">
-                                        <div class="fw-bold text-start">原始檔案：</div>
-                                        <div v-for="(url, fIndex) in detail.file_urls" :key="'old-' + fIndex"
-                                            class="d-flex align-items-center mb-1">
-                                            <a :href="url" target="_blank" class="me-2">{{
-                                                detail.file_names[fIndex] }}</a>
-                                            <button class="btn btn-danger btn-sm delete_btn"
-                                                @click="deleteFile(index, dIndex, fIndex, 'old')">刪除檔案</button>
+                                        <!-- 舊有檔案列表 -->
+                                        <div v-if="detail.file_urls && detail.file_urls.length" class="mb-2"
+                                            :ref="`oldFiles-${index}-${dIndex}`">
+                                            <div class="fw-bold text-start">原始檔案：</div>
+                                            <div v-for="(url, fIndex) in detail.file_urls" :key="'old-' + fIndex"
+                                                class="d-flex align-items-center mb-1">
+                                                <a :href="url" target="_blank" class="me-2">{{
+                                                    detail.file_names[fIndex] }}</a>
+                                                <button class="btn btn-danger btn-sm delete_btn bi bi-trash3"
+                                                    @click="deleteFile(index, dIndex, fIndex, 'old')"></button>
+                                            </div>
+                                        </div>
+                                        <!-- 新增檔案列表 -->
+                                        <div v-if="detail.new_files && detail.new_files.length" class="mb-2"
+                                            :ref="`newFiles-${index}-${dIndex}`">
+                                            <div class="fw-bold text-start">新增檔案：</div>
+                                            <div v-for="(file, nfIndex) in detail.new_files" :key="'new-' + nfIndex"
+                                                class="d-flex align-items-center mb-1">
+                                                <span class="me-2">{{ file.name }}</span>
+                                                <button class="btn btn-danger btn-sm delete_btn bi bi-trash3"
+                                                    @click="deleteFile(index, dIndex, nfIndex, 'new')"></button>
+                                            </div>
+                                        </div>
+                                        <!-- 檔案上傳 input -->
+                                        <input type="file" @change="handleNewFileChange($event, index, dIndex)"
+                                            class="form-control mt-2">
+                                    </template>
+                                    <!-- 🧾 唯讀模式 -->
+                                    <div v-else>
+                                        <div class="detail-text">({{ chineseNumbers[dIndex]}}){{
+                                            detail.content.trim().replace(/\n+/g, '\n')}}</div>
+                                        <div v-if="detail.file_urls && detail.file_urls.length">
+                                            <div v-for="(url, fIndex) in detail.file_urls" :key="'old-' + fIndex"
+                                                class="d-flex align-items-center mb-1">
+                                                <a :href="url" target="_blank" class="me-2">{{
+                                                    detail.file_names[fIndex]}}</a>
+                                            </div>
                                         </div>
                                     </div>
-                                    <!-- 新增檔案列表 -->
-                                    <div v-if="detail.new_files && detail.new_files.length" class="mb-2"
-                                        :ref="`newFiles-${index}-${dIndex}`">
-                                        <div class="fw-bold text-start">新增檔案：</div>
-                                        <div v-for="(file, nfIndex) in detail.new_files" :key="'new-' + nfIndex"
-                                            class="d-flex align-items-center mb-1">
-                                            <span class="me-2">{{ file.name }}</span>
-                                            <button class="btn btn-danger btn-sm delete_btn"
-                                                @click="deleteFile(index, dIndex, nfIndex, 'new')">刪除檔案</button>
-                                        </div>
-                                    </div>
-                                    <!-- 檔案上傳 input -->
-                                    <input type="file" @change="handleNewFileChange($event, index, dIndex)"
-                                        class="form-control mt-2">
-
                                 </div>
-                                <div class="agenda-item">
-                                    <button class="btn detail_btn" @click="add_detail(index)">新增細項</button>
+                                <div v-if="editable" class="agenda-item">
+                                    <button class="btn detail_btn" @click="add_detail(index)">＋細項</button>
                                     <div v-if="schedule.details.length > 0">
                                         <button class="btn delete_btn" @click="deleteDetail(index)">
-                                            刪除細項
+                                            －細項
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                            <div class="agenda-item mb-3 d-flex align-items-center">
+                            <div v-if="editable" class="agenda-item mb-3 d-flex align-items-center">
                                 <label class="input_text mb-0 me-2" style="min-width: auto;">是否上架：</label>
                                 <label class="switch">
                                     <input type="checkbox" v-model="is_visible" />
@@ -170,7 +216,8 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-primary" @click="saveChange(userid)">儲存會議通知</button>
+                            <button v-if="editable" type="button" class="btn btn_save"
+                                @click="saveChange(userid)">儲存會議通知</button>
                             <div v-if="uploading" class="uploading-overlay">
                                 <div class="uploading-box">
                                     <div class="spinner-border custom-spinner" role="status"></div>
@@ -207,14 +254,17 @@
                 modalPerson: '',
                 modalShorthand: '',
                 modalDate: '',
-                modalPresent: '',
-                modalAttendance: '',
+                modalPresentEdit: '',
+                modalAttendanceEdit: '',
+                modalPresent: [],
+                modalAttendance: [],
                 modalSchedule: [],// 原始資料
                 modalDetails: '',
                 modaladdedschedule: [],
                 userid: 0,
                 is_visible: true,
-                hasEmptyContent: false
+                hasEmptyContent: false,
+                editable: false, // 編輯模式開關
             },
             async created() {
                 await this.fetchBackendData();
@@ -235,13 +285,34 @@
                         number: this.chineseNumbers[index],
                         details: item.details || [],
                     }));
-                }
+                },
+                pairedAttendances() {
+                    const pairs = [];
+                    for (let i = 0; i < this.modalAttendance.length; i += 2) {
+                        pairs.push([
+                            this.modalAttendance[i],
+                            this.modalAttendance[i + 1] || null, // 第二欄可能為空
+                        ]);
+                    }
+                    return pairs;
+                },
+                pairedPresents() {
+                    const pairs = [];
+                    for (let i = 0; i < this.modalPresent.length; i += 2) {
+                        pairs.push([
+                            this.modalPresent[i],
+                            this.modalPresent[i + 1] || null, // 第二欄可能為空
+                        ]);
+                    }
+                    return pairs;
+                },
             },
             methods: {
                 async fetchBackendData() {// 获取后端数据的方法
                     try {
-                        const response = await axios.get('/admin/notifi/data');
+                        const response = await axios.get('/notifi/data');
                         if (response.data) {
+                            this.editable = response.data.editable; // 由後端控制
                             this.session_list = response.data.session_list;
                             const tmp = response.data.notifications;
                             for (let i = 0; i < tmp.length; i++) {
@@ -309,8 +380,10 @@
                     this.modalPerson = ""
                     this.modalShorthand = ""
                     this.modalDate = ""
-                    this.modalPresent = ""
-                    this.modalAttendance = ""
+                    this.modalPresentEdit = ""
+                    this.modalAttendanceEdit = ""
+                    this.modalPresent = []
+                    this.modalAttendance = []
                     this.is_visible = true
                     this.modalSchedule = [
                         { title: "宣布開會", details: [] },
@@ -329,7 +402,11 @@
                     }
                     this.loading = false;
                     // 資料準備好再開啟 modal
+                    modalEl.addEventListener('shown.bs.modal', () => {
+                        this.autoResizeAll();
+                    });
                     const modal = new bootstrap.Modal(modalEl);
+
                     modal.show();
                 },
                 async getdetail(itemID) {
@@ -337,7 +414,7 @@
                     this.modalSession = ""
                     this.modalSchedule = []
                     try {
-                        const response = await axios.get(`/admin/notifi/data/${itemID}`);
+                        const response = await axios.get(`/notifi/data/${itemID}`);
                         if (response.data) {
                             const tmp = response.data.notifications[0];
                             this.modalTitle = tmp.title
@@ -348,28 +425,18 @@
                             this.modalDate = this.formatDate(new Date(tmp.date))
                             this.is_visible = tmp.is_visible
 
+                            // 使用
                             let present = tmp.present
-                            for (let key in present) {
-                                if (present[key].members.length == 0) {
-                                    this.modalPresent = this.modalPresent + `${present[key].role}、`
-                                }
-                                else {
-                                    for (let v in present[key].members) {
-                                        this.modalPresent = this.modalPresent + `${present[key].role} ${present[key].members[v]}、`
-                                    }
-                                }
-                            }
                             let attendance = tmp.attendance
-                            for (let key in attendance) {
-                                if (attendance[key].members.length == 0) {
-                                    this.modalAttendance = this.modalAttendance + `${attendance[key].role}、`
-                                }
-                                else {
-                                    for (let v in attendance[key].members) {
-                                        this.modalAttendance = this.modalAttendance + `${attendance[key].role} ${attendance[key].members[v]}、`
-                                    }
-                                }
+
+                            if (this.editable) {
+                                this.modalPresentEdit = this.formatPresentOrAttendance(present, true)
+                                this.modalAttendanceEdit = this.formatPresentOrAttendance(attendance, true)
+                            } else {
+                                this.modalPresent = this.formatPresentOrAttendance(present, false)
+                                this.modalAttendance = this.formatPresentOrAttendance(attendance, false)
                             }
+
                             let schedules = tmp.schedules
                             schedules.sort((a, b) => a.id - b.id);
 
@@ -405,9 +472,9 @@
                     const date = document.getElementById("date").value.trim();
                     const place = this.modalPlace.trim();
                     const person = this.modalPerson.trim();
-                    const present = this.modalPresent
-                    const attendance = document.getElementById("attendance_list").value
-                    const is_visible = this.is_visible
+                    const present = this.modalPresentEdit;
+                    const attendance = this.modalAttendanceEdit;
+                    const is_visible = this.is_visible;
                     // ✅ 基本欄位驗證
                     if (!title || !session || !date || !place || !person || !present || !attendance) {
                         alert("請填寫所有必填欄位（標題、屆次、日期、地點、聯絡人、出席名單、列席名單）");
@@ -445,7 +512,7 @@
                         });
                         this.uploading = true;
                         try {
-                            const response = await axios.post("/admin/notifi/upload", formData, {
+                            const response = await axios.post("/notifi/upload", formData, {
                                 headers: {
                                     "Content-Type": "multipart/form-data"
                                 }
@@ -607,13 +674,50 @@
                     });
                     return contentList;
                 },
+                autoResize(event) {
+                    const textarea = event.target;
+                    textarea.style.height = 'auto';
+                    textarea.style.height = textarea.scrollHeight + 'px';
+                },
+                autoResizeAll() {
+                    const textareas = this.$el.querySelectorAll('.auto-resize-textarea');
+                    textareas.forEach((ta) => {
+                        ta.style.height = 'auto';
+                        ta.style.height = ta.scrollHeight + 'px';
+                    });
+                    console.log('d', textareas)
+                },
+                formatPresentOrAttendance(data, editable) {
+                    if (editable) {
+                        return data
+                            .flatMap(item =>
+                                item.members.length
+                                    ? item.members.map(member => `${item.role} ${member}`)
+                                    : [`${item.role}`]
+                            )
+                            .join("、")
+                    } else {
+                        let result = []
+                        data.forEach(item => {
+                            if (item.members.length === 0) {
+                                result.push(item.role)
+                            } else {
+                                item.members.forEach(member => {
+                                    result.push(`${item.role} ${member}`)
+                                })
+                            }
+                        })
+                        return result
+                    }
+                },
                 formatDate(date) {
                     let year = date.getUTCFullYear();
                     let month = String(date.getUTCMonth() + 1).padStart(2, '0');
                     let day = String(date.getUTCDate()).padStart(2, '0');
                     let hours = String(date.getUTCHours()).padStart(2, '0');
                     let minutes = String(date.getUTCMinutes()).padStart(2, '0');
-                    return `${year}-${month}-${day}T${hours}:${minutes}`;
+                    if (this.editable) return `${year}-${month}-${day}T${hours}:${minutes}`;
+                    return `${year}-${month}-${day}  ${hours}:${minutes}`;
                 }
             },
         });
