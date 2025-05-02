@@ -45,7 +45,6 @@
 
                 // 監聽popstate事件，返回上一頁或前進頁面時自動登出
                 window.addEventListener('popstate', (event) => {
-                    console.log('popstate triggered', event);
                     this.checkAndLogout();
                 });
 
@@ -55,7 +54,6 @@
             methods: {
                 async onLogin() {
                     try {
-                        // console.log('onLogin')
                         this.username = document.getElementById("username").value;
                         this.password = document.getElementById("password").value;
 
@@ -65,12 +63,10 @@
                         });
 
                         if (response.data.success) {
-                            console.log('success')
                             sessionStorage.setItem("loggedIn", "true");
                             window.location.href = "/notifi";  // 登录成功，跳转到 /admin/notifi 页面
 
                         } else {
-                            console.log('Invalid credentials')
                             this.errorMessage = "Invalid credentials";
                             window.location.href = "/";
 
@@ -83,14 +79,12 @@
                     if (this.isLoggingOut) return;  // 防止多次執行
 
                     this.isLoggingOut = true;  // 標記為正在登出
-                    console.log('登出成功，將刷新頁面');
 
                     fetch('/logout', {
                         method: 'GET',
                         credentials: 'same-origin'
                     }).then(() => {
                         // 登出完成後，刷新頁面
-                        console.log("已登出");
                         window.location.href = '/';
                     }).catch(err => {
                         console.error("登出失敗", err);
@@ -99,7 +93,6 @@
                 },
                 monitorHistoryChange() {
                     history.pushState({}, null, window.location.href);  // 推送新的歷史狀態，避免直接返回
-                    console.log(history)
                 },
 
                 // 檢查登錄狀態並登出
@@ -118,7 +111,6 @@
 
                 // 監聽 pageshow 事件，防止 Safari 快取導致的問題
                 window.addEventListener('pageshow', (event) => {
-                    console.log('pageshow', event);
                     if (event.persisted) {
                         // 使用者是從快取回來的，強制登出
                         this.logoutAutomatically();

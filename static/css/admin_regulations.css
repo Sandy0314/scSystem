@@ -8,7 +8,6 @@
 
 /* 页面居中 */
 #app_background {
-    /* align-items: center; */
     min-height: 100vh;
     background: linear-gradient(135deg, rgb(221, 221, 221), rgb(221, 221, 221));
     font-family: Arial, sans-serif;
@@ -39,7 +38,6 @@ h1 {
     background-color: #435c77;
 }
 
-/* 限制每屆內容的顯示區塊 */
 .section {
     margin-bottom: 30px;
 }
@@ -217,9 +215,6 @@ label {
     text-align: left;
     /* 文字靠左 */
     display: inline-block;
-    /* 讓文字和按鈕保持同一行 */
-    /* margin-left: 10px;
-    margin-right: 5px; */
     padding: 0;
     margin: 0;
     font-weight: normal;
@@ -241,7 +236,7 @@ label {
 
 .clause-wrapper {
     &.editable {
-        padding: 10px;
+        padding: 4px 0 0 0;
     }
 
     &.readonly {
@@ -263,14 +258,17 @@ label {
 }
 
 .auto-resize-textarea {
-    resize: none;
-    overflow: hidden;
-    min-height: 3rem;
+    font-size: 16px;
     line-height: 1.5;
+    /* 預設一行 */
+    padding: 5px 0 3px 12px;
+    border: 1px solid #ccc;
+    resize: none;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 
-/* 根據按鈕多寡決定高度大小 */
 .textarea-wrapper.three-buttons textarea {
     min-height: 110px;
 }
@@ -296,14 +294,12 @@ label {
     box-sizing: border-box;
 }
 
-/* 根據按鈕多寡決定高度大小 */
 .textarea-wrapper1.three-buttons textarea {
     padding-right: 115px;
-
 }
 
 .textarea-wrapper1 .btn {
-    height: 40px;
+    height: 37px;
     border-radius: 0px;
     white-space: nowrap;
 }
@@ -321,10 +317,8 @@ label {
     white-space: nowrap;
 }
 
-.detail_btn {
+.add_btn {
     white-space: nowrap;
-    /* margin-left: 10px; */
-    /* 防止按鈕折行 */
     padding: 1.5px 4px;
     cursor: pointer;
     background-color: #637485;
@@ -334,7 +328,7 @@ label {
 }
 
 
-.detail_btn:hover {
+.add_btn:hover {
     background-color: #a9bed5;
 }
 
@@ -361,8 +355,6 @@ label {
     margin-top: 5rem;
     /* 每筆細項之間的間距 */
     position: relative;
-
-
 }
 
 .chapter_btn {

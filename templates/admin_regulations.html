@@ -14,9 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- 引入 Axios -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/admin_regulations.css">
-
 </head>
-
 
 <body>
     {% raw %}
@@ -49,7 +47,7 @@
             </div>
             <!-- Modal -->
             <div class="modal fade" id="itemModal" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true"
-                data-bs-backdrop="static">
+                :data-bs-backdrop="editable ? 'static' : null">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
@@ -120,7 +118,7 @@
                             </div>
                             <div v-if="editable" class="input_text">內容</div>
                             <!-- 最後一條是:{{articleLastNumber}} -->
-                            <div v-for="(chapter, index) in modalChapters" :key="index" class="mb-3">
+                            <div v-for="(chapter, index) in modalChapters" :key="index" class="mb-1">
                                 <div class="agenda-item">
                                     <div class="input_text">第{{ chapter.chineseNumbers }}章 </div>
                                     <div v-if="editable" class="input-group">
@@ -128,7 +126,7 @@
                                             aria-label="章節標題" aria-describedby="basic-addon1" v-model="chapter.title"
                                             :ref="`chapterTitle-${index}`" />
                                         <div class="input-group-append d-flex">
-                                            <button class="btn detail_btn" @click="addArticle(index,-1)">＋條</button>
+                                            <button class="btn add_btn" @click="addArticle(index,-1)">＋條</button>
                                             <button v-if="index && index === modalChapters.length-1"
                                                 class="btn delete_btn" @click="deleteChapter(index)">－章
                                             </button>
@@ -139,23 +137,19 @@
                                 <!-- 條列表 -->
                                 <div v-for="(article, aIndex) in chapter.articles" :key="aIndex" class="ms-3 mt-1">
                                     <div class="agenda-item">
-                                        <div class="article_text">第{{article.converted}}</div>
-                                        <!-- {{article.sort_index}}</div> -->
+                                        <div class="article_text me-3">第{{article.converted}}</div>
                                         <div v-if="editable" class="input-group">
                                             <input id="article_title" type="text" class="form-control"
                                                 placeholder="此條標題" aria-label="條標題" v-model="article.title"
                                                 :ref="`articleTitle-${index}-${aIndex}`" />
-                                            <!-- 放在右邊 -->
                                             <div class="input-group-append d-flex">
-                                                <button class="btn detail_btn" @click="addParagraph(article, -1)">
+                                                <button class="btn add_btn" @click="addParagraph(article, -1)">
                                                     ＋項
                                                 </button>
-                                                <button class="btn detail_btn" @click="addArticle(index, aIndex)">
+                                                <button class="btn add_btn" @click="addArticle(index, aIndex)">
                                                     ＋條
                                                 </button>
-                                                <!-- userid === -1 -->
-                                                <button v-if=" 1" class="btn delete_btn"
-                                                    @click="deleteArticle(index, aIndex)">
+                                                <button class="btn delete_btn" @click="deleteArticle(index, aIndex)">
                                                     －條
                                                 </button>
                                             </div>
@@ -166,18 +160,18 @@
                                     <div v-for="(paragraph,pIndex) in article.paragraphs" :key="pIndex"
                                         class="ms-5 mt-1">
                                         <div v-if="editable" class="agenda-item">
-                                            <span class="normal_text">{{ paragraph.number }}、</span>
-                                            <div class="textarea-wrapper" :class="{'three-buttons': 1}">
-                                                <!-- <div class="textarea-wrapper1" :class="{'three-buttons': 1}"> -->
+                                            <span class="normal_text">{{ paragraph.number }}.</span>
+                                            <!-- <div class="textarea-wrapper" :class="{'three-buttons': 1}"> -->
+                                            <div class="textarea-wrapper1" :class="{'three-buttons': 1}">
                                                 <textarea class="form-control auto-resize-textarea"
                                                     v-model="paragraph.content"
                                                     :ref="`paragraphTextarea-${index}-${aIndex}-${pIndex}`"
                                                     @input="autoResize($event)" placeholder="此項內容"></textarea>
-                                                <div class="textarea-buttons">
-                                                    <!-- <div class="textarea1-buttons d-flex"> -->
-                                                    <button class="btn detail_btn mb-1"
+                                                <!-- <div class="textarea-buttons"> -->
+                                                <div class="textarea1-buttons d-flex">
+                                                    <button class="btn add_btn"
                                                         @click="addClause(paragraph,-1)">＋款</button>
-                                                    <button class="btn detail_btn mb-1"
+                                                    <button class="btn add_btn"
                                                         @click="addParagraph(article,pIndex)">＋項</button>
                                                     <button class="btn delete_btn"
                                                         @click="deleteParagraph(article.paragraphs,pIndex)">－項</button>
@@ -192,17 +186,17 @@
                                             :class="['clause-wrapper', editable ? 'editable' : 'readonly']">
                                             <div class="agenda-item">
                                                 <span class="normal_text">{{ clause.chineseNumber }}、</span>
-                                                <div v-if="editable" class="textarea-wrapper">
-                                                    <!-- <div v-if="editable" class="textarea-wrapper1"> -->
+                                                <!-- <div v-if="editable" class="textarea-wrapper"> -->
+                                                <div v-if="editable" class="textarea-wrapper1">
                                                     <textarea class="form-control auto-resize-textarea"
                                                         v-model="clause.content"
                                                         :ref="`clauseTextarea-${index}-${aIndex}-${pIndex}-${cIndex}`"
                                                         @input="autoResize($event)" placeholder="此款內容"></textarea>
-                                                    <div class="textarea-buttons">
-                                                        <!-- <div class="textarea1-buttons d-flex"> -->
-                                                        <button class="btn detail_btn mb-1"
+                                                    <!-- <div class="textarea-buttons"> -->
+                                                    <div class="textarea1-buttons d-flex">
+                                                        <button class="btn add_btn"
                                                             @click="addClause(paragraph, cIndex)">＋款</button>
-                                                        <button class="btn delete_btn "
+                                                        <button class="btn delete_btn"
                                                             @click="deleteClause(paragraph.clauses, cIndex)">－款</button>
                                                         <!-- mb-1 -->
                                                     </div>
@@ -258,24 +252,16 @@
                 uploading: false,
                 loading: false,
                 chineseNumbers: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十", "二十一", "二十二", "二十三", "二十四", "二十五", "二十六", "二十七"],
-                restrictedTitles: [
-                    "宣布開會", "確認議程", "主席報告", "報告事項", "討論事項", "臨時動議", "自由發言", "散會"
-                ],
                 latest_category: "",
                 categories: {},
                 category_list: [],
                 modalTitle: '',  // 绑定到 input 的值
                 modalCategory: '',
                 modalDescription: '',
-                modalPerson: '',
-                modalShorthand: '',
                 revisionRecords: [],
-                modalPresent: '',
-                modalAttendance: '',
                 modalChapters: [],// 原始資料
                 articleLastNumber: 0,
                 chapterLastNumber: 0,
-                modalAddChapter: [],
                 userid: 0,
                 is_visible: true,
                 hasEmptyContent: false,
@@ -287,11 +273,11 @@
             computed: {
             },
             methods: {
-                async fetchBackendData() {// 获取后端数据的方法
+                async fetchBackendData() {
                     try {
                         const response = await axios.get('/regulations/data');
                         if (response.data) {
-                            this.editable = response.data.editable; // 由後端控制
+                            this.editable = response.data.editable;
                             this.category_list = response.data.category_list;
                             const tmp = response.data.regulations;
                             for (let i = 0; i < tmp.length; i++) {
@@ -313,8 +299,6 @@
                 async openModal(itemID) {
                     const modalEl = document.getElementById("itemModal");
                     this.userid = itemID
-                    console.log('userid', this.userid)
-                    this.modalAddChapter = [];
                     this.modalTitle = ""
                     this.modalCategory = this.latest_category
                     this.modalDescription = ""
@@ -341,12 +325,10 @@
                 async getdetail(itemID) {
                     this.loading = true;
                     this.modalCategory = ""
-                    this.modalChapters = []
                     try {
                         const response = await axios.get(`/regulations/data/${itemID}`);
                         if (response.data) {
                             const tmp = response.data.regulations;
-                            console.log(tmp)
                             this.modalTitle = tmp.title
                             this.modalCategory = tmp.category
                             this.modalDescription = tmp.description
@@ -360,71 +342,51 @@
                                 })
                             }
                             //版本
-
                             let chapters = tmp.chapters
-                            if (chapters.length === 0) {
-                                this.modalChapters = [
-                                    { number: 1, chineseNumbers: '一', title: "", articles: [] },
-                                ]
-                                return;
-                            }
+                            if (chapters.length === 0) return;
+                            this.modalChapters = []
+
                             chapters.sort((a, b) => a.number - b.number);
-                            this.chapterLastNumber = chapters.length - 1
-                            for (let idx in chapters) {
-                                console.log(chapters[idx].title)
-                                let articles = chapters[idx].articles
-                                let article = []
-                                articles.sort((a, b) => a.sort_index - b.sort_index);
-                                let sort_index = []
-                                for (let aIndex in articles) {
-                                    sort_index.push(articles[aIndex].sort_index)
-                                }
+                            this.chapterLastNumber = chapters.length - 1;
 
-                                let convertedList = this.convertArticles(sort_index, 0)
-                                for (let aIndex in articles) {
-                                    let paragraphs = articles[aIndex].paragraphs
-                                    let paragraph = []
-                                    paragraphs.sort((a, b) => a.number - b.number);
-                                    for (let pIndex in paragraphs) {
-                                        // console.log(paragraphs[pIndex].content)
-                                        let clauses = paragraphs[pIndex].clauses
-                                        let clause = []
-                                        clauses.sort((a, b) => a.number - b.number);
-                                        for (let cIndex in clauses) {
-                                            // console.log(clauses[cIndex].content)
-                                            clause.push({
-                                                id: clauses[cIndex].id,
-                                                number: clauses[cIndex].number,
-                                                chineseNumber: this.chineseNumbers[clause.length],
-                                                content: clauses[cIndex].content,
-                                            }
-                                            )
-                                        }
-                                        paragraph.push({
-                                            id: paragraphs[pIndex].id,
-                                            number: paragraphs[pIndex].number,
-                                            content: paragraphs[pIndex].content,
-                                            clauses: clause,
-                                        }
-                                        )
-                                    }
+                            this.modalChapters = chapters.map((chapter, chapterIdx) => {
+                                let articles = [...chapter.articles].sort((a, b) => a.sort_index - b.sort_index);
+                                let sort_index_list = Array.isArray(articles) ? articles.map(a => a.sort_index) : [];
+                                let convertedList = this.convertArticles(sort_index_list, 0);
 
-                                    article.push({
-                                        id: articles[aIndex].id,
-                                        title: articles[aIndex].title,
-                                        sort_index: articles[aIndex].sort_index,
-                                        converted: convertedList[aIndex].converted,
-                                        paragraphs: paragraph,
-                                    }
-                                    )
-                                }
-                                this.modalChapters.push({
-                                    chineseNumbers: this.chineseNumbers[this.modalChapters.length],  // 使用長度來直接獲取對應的數字
-                                    number: chapters[idx].number,
-                                    title: chapters[idx].title,
-                                    articles: article
+                                let formattedArticles = articles.map((article, articleIdx) => {
+                                    let paragraphs = [...article.paragraphs].sort((a, b) => a.number - b.number);
+
+                                    let formattedParagraphs = paragraphs.map(paragraph => {
+                                        let clauses = [...paragraph.clauses].sort((a, b) => a.number - b.number);
+                                        let formattedClauses = clauses.map((clause, idx) => ({
+                                            id: clause.id,
+                                            number: clause.number,
+                                            chineseNumber: this.chineseNumbers[idx],
+                                            content: clause.content
+                                        }));
+                                        return {
+                                            id: paragraph.id,
+                                            number: paragraph.number,
+                                            content: paragraph.content,
+                                            clauses: formattedClauses
+                                        };
+                                    });
+                                    return {
+                                        id: article.id,
+                                        title: article.title,
+                                        sort_index: article.sort_index,
+                                        converted: convertedList[articleIdx]?.converted ?? '',
+                                        paragraphs: formattedParagraphs
+                                    };
                                 });
-                            }
+                                return {
+                                    chineseNumbers: this.chineseNumbers[chapterIdx],
+                                    number: chapter.number,
+                                    title: chapter.title,
+                                    articles: formattedArticles
+                                };
+                            });
                         }
                     } catch (error) {
                         alert(`無法取得此筆規章資料，請截圖並和工程師聯繫。\n錯誤訊息為 : ${error}`);
@@ -454,7 +416,7 @@
                     const revisionList = StructuredContents[0]
                     const StructuredContent = StructuredContents[1]
                     console.log(revisionList, StructuredContent)
-                    if (!this.hasEmptyContent) {// content 要轉成 JSON 字串送到後端
+                    if (!this.hasEmptyContent) {
                         formData.append("revision", JSON.stringify(revisionList));
                         formData.append("content", JSON.stringify(StructuredContent));
                         this.uploading = true;
@@ -510,7 +472,6 @@
                     this.modalChapters.splice(chapterIndex, 1);
                 },
                 addArticle(index, aIndex) {
-                    console.log(index, aIndex)
                     if (index > 0) {
                         if (this.modalChapters[index - 1].articles.length === 0) {
                             alert(`第${this.modalChapters[index - 1].number}章沒有條，因此無法新增此條`)
@@ -567,7 +528,7 @@
                         articles.forEach((article, i) => article.converted = convertedList[i].converted);
                     }
                 },
-                deleteArticle(index, aIndex) {//只有新增檔案可以刪除條
+                deleteArticle(index, aIndex) {
                     let articles = this.modalChapters[index].articles;
                     if (articles.length === 1) {
                         for (let idx = index + 1; idx < this.modalChapters.length; idx += 1)
@@ -580,16 +541,13 @@
                     if (this.articleLastNumber == currentArticle.sort_index && this.articleLastNumber != 0) this.articleLastNumber -= 1
                     const isIntegerArticle = Number.isInteger(currentArticle.sort_index);
 
-                    if (isIntegerArticle) {//整數條，代表後面 整數條要改
-                        console.log('刪除整數條');
-                        if (aIndex + 1 == articles.length) { //該章節最後一條 only 3, 另一章節(4, 4-1), 刪除3
-                            for (let chapterIdx = index + 1; chapterIdx < this.modalChapters.length; chapterIdx++) {
-                                this.updateArticlesAfterDelete(chapterIdx, 0);
-                            }
+                    if (isIntegerArticle) {
+                        if (aIndex === articles.length - 1) {
+                            this.modalChapters.slice(index + 1).forEach((_, chapterOffset) => {
+                                this.updateArticlesAfterDelete(index + 1 + chapterOffset, 0);
+                            });
                         }
                         else if (Math.floor(articles[aIndex + 1].sort_index) === currentArticle.sort_index) {
-                            // 非該章節最後
-                            // 後面有條和要刪除的同整數位置 2,2-1,2-2,2-3,3,3-1,4 刪除2
                             let startIdx = aIndex + 1
                             const newSortIndices = [];
 
@@ -618,7 +576,6 @@
                         }
                     }
                     else { //非整數條，代表後面其他整數條不用改
-                        console.log('刪除非整數條');
                         if (aIndex > 0) {
                             for (let i = articles.length - 1; i > aIndex; i--) {
                                 if (Math.floor(articles[i].sort_index) == Math.floor(currentArticle.sort_index)) {
@@ -638,7 +595,6 @@
                             content: '',
                             clauses: [],
                         });
-                        console.log('目前沒有項')
                     }
                     else {// 插入一款在 cIndex + 1 位置，並調整後方所有款編號
                         const newNumber = paragraphs[pIndex].number + 1;
@@ -647,10 +603,8 @@
                             content: '',
                             clauses: [],
                         });
-                        console.log('已經有其他項')
                     }
 
-                    // 重新編號所有後續款
                     for (let i = pIndex + 2; i < paragraphs.length; i++) {
                         paragraphs[i].number = paragraphs[i - 1].number + 1;
                     }
@@ -666,7 +620,7 @@
                     const clauses = paragraph.clauses;
                     // 沒有任何款時，直接新增第一款
                     if (cIndex === -1 || clauses.length === 0) {
-                        const newNumber = cIndex + 2; //
+                        const newNumber = cIndex + 2;
                         clauses.splice(0, 0, {
                             number: 1,
                             chineseNumber: this.chineseNumbers[0],
@@ -682,19 +636,16 @@
                         });
                     }
 
-                    // 重新編號所有後續款
                     for (let i = cIndex + 2; i < clauses.length; i++) {
                         clauses[i].number = clauses[i - 1].number + 1;
                         clauses[i].chineseNumber = this.chineseNumbers[clauses[i].number - 1];
                     }
                 },
                 deleteClause(clauses, cIndex) {
-                    // 重新編號所有後續款
                     for (let i = clauses.length - 1; i > cIndex; i--) {
                         clauses[i].number = clauses[i - 1].number;
                         clauses[i].chineseNumber = this.chineseNumbers[clauses[i].number - 1];
                     }
-
                     clauses.splice(cIndex, 1);
                 },
                 getStructuredContentFromRefs() {
@@ -776,7 +727,6 @@
                                     clauses.push({
                                         content: clauseContentValue.replaceAll(",", "，").replaceAll(":", "："),
                                         number: clause.number,
-                                        // chineseNumber: clause.chineseNumber
                                     });
                                 });
                                 // 加進去paragraph
@@ -822,23 +772,34 @@
                     return result;
                 },
                 numberToChinese(num) {
-                    const units = ['', '十', '二十', '三十', '四十', '五十', '六十', '七十', '八十', '九十'];
-                    const digits = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+                    if (num <= 0 || num > 150) return '不支援';
+                    const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
 
-                    if (num <= 0 || num >= 100) return '不支援';
+                    const getChinese = (n) => {
+                        if (n < 10) {
+                            return digits[n];
+                        } else if (n < 100) {
+                            const ten = Math.floor(n / 10);
+                            const one = n % 10;
+                            if (ten === 1) return '十' + (one === 0 ? '' : digits[one]);
+                            return digits[ten] + '十' + (one === 0 ? '' : digits[one]);
+                        } else {
+                            const hundred = Math.floor(n / 100);           // 1
+                            const rest = n % 100;                           // 0~99
+                            const ten = Math.floor(rest / 10);
+                            const one = rest % 10;
 
-                    const ten = Math.floor(num / 10);
-                    const one = num % 10;
-
-                    if (num < 10) {
-                        return digits[num];
-                    } else if (one === 0) {
-                        return units[ten];
-                    } else if (ten === 1) {
-                        return '十' + digits[one]; // 特別處理 10~19
-                    } else {
-                        return units[ten] + digits[one];
-                    }
+                            let result = digits[hundred] + '百';
+                            if (rest === 0) return result;                  // 整百
+                            if (rest < 10) {
+                                result += '零' + digits[one];
+                            } else {
+                                result += digits[ten] + '十' + (one === 0 ? '' : digits[one]);
+                            }
+                            return result;
+                        }
+                    };
+                    return getChinese(num);
                 },
                 createArticle(sortIndex, converted) {
                     return {
@@ -877,10 +838,7 @@
                     }
                 },
                 convertArticles(floatList, type) {
-                    // console.log('floatList', floatList)
-                    const chineseNumbers = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十",
-                        "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十"];
-                    const suffixMap = ["之一", "之二", "之三", "之四", "之五", "之六", "之七", "之八", "之九", "之十"];
+                    const suffixMap = ["之一", "之二", "之三", "之四", "之五", "之六", "之七", "之八", "之九", "之十", "之十一", "之十二", "之十三", "之十四", "之十五", "之十六", "之十七", "之十八", "之十九", "之二十"];
 
                     const suffixLookup = {};
                     const decimalSeen = {};  // 每條的非整數出現順序
@@ -890,7 +848,7 @@
                     // 第一次先建立每條的最後一個 label
                     floatList.forEach(num => {
                         const intPart = Math.floor(num);
-                        const base = chineseNumbers[intPart] + "條";
+                        const base = this.numberToChinese(intPart) + "條";
 
                         if (!decimalSeen[intPart]) decimalSeen[intPart] = [];
 
@@ -914,7 +872,7 @@
                     // 第二次產生結果 list 並標記最後一個
                     floatList.forEach(num => {
                         const intPart = Math.floor(num);
-                        const base = chineseNumbers[intPart] + "條";
+                        const base = this.numberToChinese(intPart) + "條";
 
                         let label = "";
 
@@ -943,7 +901,6 @@
                         ta.style.height = 'auto';
                         ta.style.height = ta.scrollHeight + 'px';
                     });
-                    console.log('d', textareas)
                 },
                 formatDate(date) {
                     let year = date.getUTCFullYear();

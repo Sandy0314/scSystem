@@ -98,13 +98,24 @@
                                     <span v-else class="text-muted">（尚無速記）</span>
                                 </div>
                             </div>
-                            <div class="form-group">
+                            <div v-if="pairedPresents[0][1]===null" class="form-group">
                                 <label for="present_list" class="input_text">出席名單 </label>
                                 <textarea v-if="editable" id="present_list" class="form-control auto-resize-textarea"
                                     placeholder="例：本會各學生代表、......&#13;&#10; (稱謂和名字請以空白隔開，人物之間請以逗號分隔)" aria-label="出席名單"
                                     aria-describedby="basic-addon1" v-model="modalPresentEdit"
                                     @input="autoResize($event)"></textarea>
                                 <div v-else class="members-table">
+                                    <div class="member-row" v-for="(pair, index) in pairedPresents" :key="index">
+                                        <div class="member-col" v-for="(item, idx) in pair" :key="idx" v-if="item">
+                                            <span class="persontitle">{{ item.split(' ')[0] }}</span>
+                                            <span class="name">{{ item.split(' ')[1] }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="members-table">
+                                <label for="attendance_list" class="input_text">出席名單 </label>
+                                <div class="members-table">
                                     <div class="member-row" v-for="(pair, index) in pairedPresents" :key="index">
                                         <div class="member-col" v-for="(item, idx) in pair" :key="idx" v-if="item">
                                             <span class="persontitle">{{ item.split(' ')[0] }}</span>
@@ -287,23 +298,31 @@
                     }));
                 },
                 pairedAttendances() {
+                    const source = this.modalAttendance;
                     const pairs = [];
-                    for (let i = 0; i < this.modalAttendance.length; i += 2) {
-                        pairs.push([
-                            this.modalAttendance[i],
-                            this.modalAttendance[i + 1] || null, // 第二欄可能為空
-                        ]);
+
+                    const half = Math.ceil(source.length / 2);
+
+                    for (let i = 0; i < half; i++) {
+                        const first = source[i];
+                        const second = source[i + half] || null;
+                        pairs.push([first, second]);
                     }
+
                     return pairs;
                 },
                 pairedPresents() {
+                    const source = this.modalPresent;
                     const pairs = [];
-                    for (let i = 0; i < this.modalPresent.length; i += 2) {
-                        pairs.push([
-                            this.modalPresent[i],
-                            this.modalPresent[i + 1] || null, // 第二欄可能為空
-                        ]);
+
+                    const half = Math.ceil(source.length / 2);
+
+                    for (let i = 0; i < half; i++) {
+                        const first = source[i];
+                        const second = source[i + half] || null;
+                        pairs.push([first, second]);
                     }
+                    if (pairs.length === 0) return [[null, null]]
                     return pairs;
                 },
             },
@@ -372,7 +391,6 @@
                 async openModal(itemID) {
                     const modalEl = document.getElementById("itemModal");
                     this.userid = itemID
-                    console.log('userid', this.userid)
                     this.modaladdedschedule = []; //  清空新增議程（避免堆疊）
                     this.modalTitle = ""
                     this.modalSession = this.latest_session
@@ -685,7 +703,6 @@
                         ta.style.height = 'auto';
                         ta.style.height = ta.scrollHeight + 'px';
                     });
-                    console.log('d', textareas)
                 },
                 formatPresentOrAttendance(data, editable) {
                     if (editable) {
